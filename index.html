@@ -1004,7 +1004,15 @@ document.getElementById("c3v3Plus").addEventListener("click", () => {
   if (state.courtConfig.count3v3 < COURT_MAX) { state.courtConfig.count3v3++; save(); renderMatchPage(); }
 });
 
-document.getElementById("generateBtn").addEventListener("click", () => generateNextRound());
+document.getElementById("generateBtn").addEventListener("click", () => {
+  generateNextRound();
+  const target = document.getElementById("latestRound").firstElementChild;
+  if (target) {
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+});
 document.getElementById("undoBtn").addEventListener("click", () => {
   if (state.rounds.length === 0) return;
   if (confirm("直前のラウンドを取り消しますか?(試合カウントも戻ります)")) {
