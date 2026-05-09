@@ -347,16 +347,8 @@
     background: var(--surface-2);
     border: 1px solid var(--line);
   }
-  .team-label {
-    font-size: 11px;
-    font-weight: 800;
-    margin-bottom: 6px;
-    letter-spacing: 0.1em;
-  }
   .team.A { border-left: 3px solid var(--teamA); }
-  .team.A .team-label { color: var(--teamA); }
   .team.B { border-left: 3px solid var(--teamB); }
-  .team.B .team-label { color: var(--teamB); }
   .team-player { font-size: 14px; padding: 3px 0; font-weight: 500; }
   .vs {
     align-self: center;
@@ -884,12 +876,10 @@ function renderRoundHTML(round, isLatest) {
         </div>
         <div class="teams">
           <div class="team A">
-            <div class="team-label">TEAM A</div>
             ${m.teamA.map(() => `<div class="team-player"></div>`).join("")}
           </div>
           <div class="vs">VS</div>
           <div class="team B">
-            <div class="team-label">TEAM B</div>
             ${m.teamB.map(() => `<div class="team-player"></div>`).join("")}
           </div>
         </div>
