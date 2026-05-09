@@ -228,6 +228,11 @@
     background: rgba(255,107,53,0.12);
     border: 1px solid rgba(255,107,53,0.3);
   }
+  .format-tag.tag1v1 {
+    color: var(--teamA);
+    background: rgba(76,201,240,0.12);
+    border: 1px solid rgba(76,201,240,0.3);
+  }
   .court-stepper {
     display: flex; align-items: center; gap: 12px;
   }
@@ -325,6 +330,10 @@
   .format-tag-small.tag3v3 {
     color: var(--accent);
     background: rgba(255,107,53,0.15);
+  }
+  .format-tag-small.tag1v1 {
+    color: var(--teamA);
+    background: rgba(76,201,240,0.15);
   }
   .teams {
     display: grid;
@@ -467,6 +476,14 @@
       <div class="court-label">コート構成</div>
       <div class="format-rows">
         <div class="format-row">
+          <div class="format-tag tag1v1">1v1</div>
+          <div class="court-stepper">
+            <button class="stepper-btn" id="c1v1Minus" aria-label="1v1を減らす">−</button>
+            <div class="court-num"><span id="c1v1Num">0</span><small>面</small></div>
+            <button class="stepper-btn" id="c1v1Plus" aria-label="1v1を増やす">+</button>
+          </div>
+        </div>
+        <div class="format-row">
           <div class="format-tag tag2v2">2v2</div>
           <div class="court-stepper">
             <button class="stepper-btn" id="c2v2Minus" aria-label="2v2を減らす">−</button>
@@ -541,7 +558,7 @@ const COURT_MAX   = 20;
 // ----- State -----
 let state = {
   players: [],               // { id, name, isActive, gamesPlayed }
-  courtConfig: { count2v2: 0, count3v3: 1 },
+  courtConfig: { count1v1: 0, count2v2: 0, count3v3: 1 },
   rounds: [],                // { roundNumber, matches:[{courtNumber, format, teamA, teamB}], resting, timestamp }
 };
 
@@ -572,15 +589,16 @@ function load() {
     if (Array.isArray(parsed.players)) state.players = parsed.players;
     if (parsed.courtConfig && typeof parsed.courtConfig === "object") {
       state.courtConfig = {
+        count1v1: clampCourt(parsed.courtConfig.count1v1),
         count2v2: clampCourt(parsed.courtConfig.count2v2),
         count3v3: clampCourt(parsed.courtConfig.count3v3),
       };
-      if (state.courtConfig.count2v2 + state.courtConfig.count3v3 === 0) {
+      if (state.courtConfig.count1v1 + state.courtConfig.count2v2 + state.courtConfig.count3v3 === 0) {
         state.courtConfig.count3v3 = 1;
       }
     } else if (typeof parsed.courtCount === "number") {
       const n = clampCourt(parsed.courtCount) || 1;
-      state.courtConfig = { count2v2: 0, count3v3: n };
+      state.courtConfig = { count1v1: 0, count2v2: 0, count3v3: n };
     }
     if (Array.isArray(parsed.rounds)) {
       state.rounds = parsed.rounds.map(r => ({
@@ -589,7 +607,7 @@ function load() {
         resting: Array.isArray(r.resting) ? r.resting : [],
         matches: (r.matches || []).map(m => ({
           courtNumber: m.courtNumber,
-          format: m.format === "2v2" ? "2v2" : "3v3",
+          format: (m.format === "1v1" || m.format === "2v2") ? m.format : "3v3",
           teamA: m.teamA || [],
           teamB: m.teamB || [],
         })),
@@ -609,8 +627,8 @@ function showToast(msg) {
   showToast._t = setTimeout(() => t.classList.remove("show"), 1600);
 }
 function activePlayers() { return state.players.filter(p => p.isActive); }
-function totalCourts()   { return state.courtConfig.count2v2 + state.courtConfig.count3v3; }
-function playersNeeded() { return state.courtConfig.count2v2 * 4 + state.courtConfig.count3v3 * 6; }
+function totalCourts()   { return state.courtConfig.count1v1 + state.courtConfig.count2v2 + state.courtConfig.count3v3; }
+function playersNeeded() { return state.courtConfig.count1v1 * 2 + state.courtConfig.count2v2 * 4 + state.courtConfig.count3v3 * 6; }
 function canGenerate()   { return totalCourts() >= 1 && activePlayers().length >= playersNeeded(); }
 
 function combinations(n, k) {
@@ -647,7 +665,7 @@ function resetGames() {
   showToast("試合数をリセットしました");
 }
 function resetAll() {
-  state = { players: [], courtConfig: { count2v2: 0, count3v3: 1 }, rounds: [] };
+  state = { players: [], courtConfig: { count1v1: 0, count2v2: 0, count3v3: 1 }, rounds: [] };
   save(); renderAll();
   showToast("全データをリセットしました");
 }
@@ -704,7 +722,7 @@ function bestSplit(players, hist) {
 // 出場者を courtSpecs に従って分配。
 // courtSpecs: [{format: "2v2"|"3v3"}, ...] (2v2 が前、3v3 が後)
 function assignToCourts(playing, courtSpecs, hist) {
-  const sizes = courtSpecs.map(c => c.format === "2v2" ? 4 : 6);
+  const sizes = courtSpecs.map(c => c.format === "1v1" ? 2 : c.format === "2v2" ? 4 : 6);
   let best = null;
   let bestTotal = Infinity;
   const trials = courtSpecs.length === 1 ? 1 : 80;
@@ -745,6 +763,7 @@ function generateNextRound() {
   const resting = sorted.slice(needed);
 
   const courtSpecs = [];
+  for (let i = 0; i < cfg.count1v1; i++) courtSpecs.push({ format: "1v1" });
   for (let i = 0; i < cfg.count2v2; i++) courtSpecs.push({ format: "2v2" });
   for (let i = 0; i < cfg.count3v3; i++) courtSpecs.push({ format: "3v3" });
 
@@ -808,8 +827,11 @@ function renderPlayers() {
 
 function renderMatchPage() {
   const cfg = state.courtConfig;
+  document.getElementById("c1v1Num").textContent = cfg.count1v1;
   document.getElementById("c2v2Num").textContent = cfg.count2v2;
   document.getElementById("c3v3Num").textContent = cfg.count3v3;
+  document.getElementById("c1v1Minus").disabled = cfg.count1v1 <= 0;
+  document.getElementById("c1v1Plus").disabled  = cfg.count1v1 >= COURT_MAX;
   document.getElementById("c2v2Minus").disabled = cfg.count2v2 <= 0;
   document.getElementById("c2v2Plus").disabled  = cfg.count2v2 >= COURT_MAX;
   document.getElementById("c3v3Minus").disabled = cfg.count3v3 <= 0;
@@ -853,7 +875,7 @@ function renderRoundHTML(round, isLatest) {
       </div>
   `;
   round.matches.forEach(m => {
-    const fmt = m.format === "2v2" ? "2v2" : "3v3";
+    const fmt = (m.format === "1v1" || m.format === "2v2") ? m.format : "3v3";
     html += `
       <div class="court-block">
         <div class="court-block-header">
@@ -963,6 +985,12 @@ document.getElementById("playerList").addEventListener("click", e => {
   }
 });
 
+document.getElementById("c1v1Minus").addEventListener("click", () => {
+  if (state.courtConfig.count1v1 > 0) { state.courtConfig.count1v1--; save(); renderMatchPage(); }
+});
+document.getElementById("c1v1Plus").addEventListener("click", () => {
+  if (state.courtConfig.count1v1 < COURT_MAX) { state.courtConfig.count1v1++; save(); renderMatchPage(); }
+});
 document.getElementById("c2v2Minus").addEventListener("click", () => {
   if (state.courtConfig.count2v2 > 0) { state.courtConfig.count2v2--; save(); renderMatchPage(); }
 });
