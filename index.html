@@ -605,6 +605,23 @@ function load() {
         })),
       }));
     }
+    // Initialize / reconstruct per-format game counts for legacy data
+    state.players.forEach(p => {
+      if (!p.gamesByFormat) {
+        const counts = { "1v1": 0, "2v2": 0, "3v3": 0 };
+        state.rounds.forEach(r => {
+          r.matches.forEach(m => {
+            const inMatch = [...m.teamA, ...m.teamB].some(x => x.id === p.id);
+            if (inMatch) counts[m.format] = (counts[m.format] || 0) + 1;
+          });
+        });
+        p.gamesByFormat = counts;
+      } else {
+        if (!("1v1" in p.gamesByFormat)) p.gamesByFormat["1v1"] = 0;
+        if (!("2v2" in p.gamesByFormat)) p.gamesByFormat["2v2"] = 0;
+        if (!("3v3" in p.gamesByFormat)) p.gamesByFormat["3v3"] = 0;
+      }
+    });
     if (migrating) save();
   } catch (e) { console.warn("load failed", e); }
 }
@@ -639,7 +656,11 @@ function combinations(n, k) {
 function addPlayer(name) {
   const trimmed = name.trim();
   if (!trimmed) return;
-  state.players.push({ id: uid(), name: trimmed, isActive: true, gamesPlayed: 0 });
+  state.players.push({
+    id: uid(), name: trimmed, isActive: true,
+    gamesPlayed: 0,
+    gamesByFormat: { "1v1": 0, "2v2": 0, "3v3": 0 },
+  });
   save(); renderAll();
 }
 function removePlayer(id) {
@@ -651,7 +672,10 @@ function toggleActive(id) {
   if (p) { p.isActive = !p.isActive; save(); renderAll(); }
 }
 function resetGames() {
-  state.players.forEach(p => p.gamesPlayed = 0);
+  state.players.forEach(p => {
+    p.gamesPlayed = 0;
+    p.gamesByFormat = { "1v1": 0, "2v2": 0, "3v3": 0 };
+  });
   state.rounds = [];
   save(); renderAll();
   showToast("試合数をリセットしました");
@@ -713,7 +737,7 @@ function bestSplit(players, hist) {
 
 // 出場者を courtSpecs に従って分配。
 // courtSpecs: [{format: "2v2"|"3v3"}, ...] (2v2 が前、3v3 が後)
-function assignToCourts(playing, courtSpecs, hist) {
+function assignToCourts(playing, courtSpecs, hist, gbf) {
   const sizes = courtSpecs.map(c => c.format === "1v1" ? 2 : c.format === "2v2" ? 4 : 6);
   let best = null;
   let bestTotal = Infinity;
@@ -725,13 +749,19 @@ function assignToCourts(playing, courtSpecs, hist) {
     let cursor = 0;
     for (let c = 0; c < courtSpecs.length; c++) {
       const size = sizes[c];
+      const fmt = courtSpecs[c].format;
       const group = shuffled.slice(cursor, cursor + size);
       cursor += size;
+      // Format-imbalance penalty: bias toward placing players who have played this format least.
+      group.forEach(p => {
+        const counts = gbf && gbf.get(p.id);
+        total += ((counts && counts[fmt]) || 0) * 2;
+      });
       const split = bestSplit(group, hist);
       total += split.score;
       matches.push({
         courtNumber: c + 1,
-        format: courtSpecs[c].format,
+        format: fmt,
         teamA: split.teamA,
         teamB: split.teamB,
       });
@@ -760,15 +790,25 @@ function generateNextRound() {
   for (let i = 0; i < cfg.count3v3; i++) courtSpecs.push({ format: "3v3" });
 
   const hist = buildPairHistory();
+  const gbf = new Map(state.players.map(p => [p.id, p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }]));
   const matches = assignToCourts(
     playing.map(p => ({ id: p.id, name: p.name })),
     courtSpecs,
-    hist
+    hist,
+    gbf
   );
 
   playing.forEach(p => {
     const found = state.players.find(x => x.id === p.id);
     if (found) found.gamesPlayed += 1;
+  });
+  matches.forEach(m => {
+    [...m.teamA, ...m.teamB].forEach(ref => {
+      const found = state.players.find(x => x.id === ref.id);
+      if (!found) return;
+      if (!found.gamesByFormat) found.gamesByFormat = { "1v1": 0, "2v2": 0, "3v3": 0 };
+      found.gamesByFormat[m.format] = (found.gamesByFormat[m.format] || 0) + 1;
+    });
   });
 
   state.rounds.unshift({
@@ -784,10 +824,15 @@ function generateNextRound() {
 function undoLastRound() {
   if (state.rounds.length === 0) return;
   const last = state.rounds[0];
-  const ids = last.matches.flatMap(m => [...m.teamA, ...m.teamB]).map(p => p.id);
-  ids.forEach(id => {
-    const p = state.players.find(x => x.id === id);
-    if (p) p.gamesPlayed = Math.max(0, p.gamesPlayed - 1);
+  last.matches.forEach(m => {
+    [...m.teamA, ...m.teamB].forEach(ref => {
+      const p = state.players.find(x => x.id === ref.id);
+      if (!p) return;
+      p.gamesPlayed = Math.max(0, p.gamesPlayed - 1);
+      if (p.gamesByFormat && p.gamesByFormat[m.format] > 0) {
+        p.gamesByFormat[m.format]--;
+      }
+    });
   });
   state.rounds.shift();
   save(); renderAll();

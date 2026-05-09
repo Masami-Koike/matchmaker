@@ -52,6 +52,7 @@ Player = {
   name: string,          // 表示名(最大20文字)
   isActive: boolean,     // 出場対象かどうか
   gamesPlayed: number,   // 通算試合数
+  gamesByFormat: { "1v1": number, "2v2": number, "3v3": number },  // 形式別の試合数
 }
 
 Round = {
@@ -80,6 +81,7 @@ PlayerRef = { id: string, name: string }
 | `courtCount: N` (旧 3v3 専用版) | `courtConfig: { count1v1: 0, count2v2: 0, count3v3: N }` |
 | `courtConfig: { count2v2, count3v3 }` (1v1 追加前) | `count1v1: 0` を補完 |
 | `Match` (formatなし) | `Match.format = "3v3"` を付与 |
+| `Player` (gamesByFormatなし) | 過去の `rounds` を走査して各形式の出場回数を再集計し付与 |
 
 マイグレーション後は新キー (`matchmaker_v2`) に保存する。
 
@@ -194,12 +196,25 @@ PlayerRef = { id: string, name: string }
 ### 5.4 複数コート割当(`assignToCourts`)
 - `courtSpecs`: コートごとの `{ format }` 配列。**1v1 → 2v2 → 3v3** の順で並ぶ。
 - 出場者を **シャッフル** して先頭から各コートのサイズ分(2 / 4 / 6)を切り出し、`bestSplit` を実行。
+- 各コートに割り当てた選手 `p` について、**形式偏りペナルティ** `gamesByFormat[p][そのコートの形式] × 2` を合計スコアに加算する(その形式を多く経験した選手ほどペナルティが高い → そのコートに置きにくい)。
 - 全コートの合計スコアを比較し、シャッフルを **80 回試行**(コート 1 面のみのときは 1 回)、最小を採用。
 
-### 5.5 設計の意図
+### 5.5 スコア式まとめ
+1ラウンド全体のスコアは下式の和で評価される(値が小さいほど良い):
+
+```
+Σ over courts:
+   形式偏りペナルティ:  Σ_{p∈court}  gamesByFormat[p][format] × 2
+ + チームメイト重複:    Σ_{p,q∈sameTeam} teammate(p,q) × 3
+ + 対戦重複:           Σ_{p∈A, q∈B} opponent(p,q) × 2
+ + 微小ランダム
+```
+
+### 5.6 設計の意図
 - **チームメイト重複** は **対戦重複** より重く重み付け(× 3 vs × 2)し、「同じ味方ばかりになる」のを優先回避。
-- 出場機会は `gamesPlayed` 昇順選出により均等化。
-- 1v1 / 2v2 / 3v3 の履歴を統合してスコア計算するため、混合運用でも偏らない。
+- 出場機会(総数)は `gamesPlayed` 昇順選出により均等化。
+- **形式別出場回数** は `gamesByFormat × 2` のペナルティで均等化(短期的なランダム偏りを抑える)。
+- 1v1 / 2v2 / 3v3 のペア履歴を統合してスコア計算するため、混合運用でも相性偏りを抑制。
 
 ---
 
@@ -264,7 +279,7 @@ PlayerRef = { id: string, name: string }
 | `resetGames` / `resetAll` | リセット |
 | `buildPairHistory()` | チームメイト/対戦履歴の集計(フォーマット非依存) |
 | `bestSplit(players, hist)` | 2 / 4 / 6 人 → A/B の最適分割 |
-| `assignToCourts(playing, courtSpecs, hist)` | 全コート分の割当 |
+| `assignToCourts(playing, courtSpecs, hist, gbf)` | 全コート分の割当(`gbf` は形式別出場回数の Map) |
 | `generateNextRound()` | 1ラウンドの組み合わせ生成 |
 | `undoLastRound()` | 最新ラウンドの取消 |
 | `renderPlayers` / `renderMatchPage` / `renderHistory` | 画面別描画 |
