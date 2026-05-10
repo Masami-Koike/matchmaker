@@ -833,6 +833,7 @@ function buildPairHistory() {
 function bestSplit(players, hist) {
   const key = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
   const get = (m, a, b) => m.get(key(a, b)) || 0;
+  const sq = x => x * x;
   const n = players.length;
   const teamSize = n / 2;
   let best = null;
@@ -845,12 +846,12 @@ function bestSplit(players, hist) {
     let score = 0;
     for (let i = 0; i < teamSize; i++)
       for (let j = i + 1; j < teamSize; j++) {
-        score += get(hist.teammate, teamA[i].id, teamA[j].id) * 3;
-        score += get(hist.teammate, teamB[i].id, teamB[j].id) * 3;
+        score += sq(get(hist.teammate, teamA[i].id, teamA[j].id)) * 3;
+        score += sq(get(hist.teammate, teamB[i].id, teamB[j].id)) * 3;
       }
     for (let i = 0; i < teamSize; i++)
       for (let j = 0; j < teamSize; j++) {
-        score += get(hist.opponent, teamA[i].id, teamB[j].id) * 2;
+        score += sq(get(hist.opponent, teamA[i].id, teamB[j].id)) * 2;
       }
     score += Math.random() * 0.01;
     if (score < bestScore) { bestScore = score; best = { teamA, teamB, score }; }
@@ -861,10 +862,11 @@ function bestSplit(players, hist) {
 // 出場者を courtSpecs に従って分配。
 // courtSpecs: [{format: "2v2"|"3v3"}, ...] (2v2 が前、3v3 が後)
 function assignToCourts(playing, courtSpecs, hist, gbf) {
+  const sq = x => x * x;
   const sizes = courtSpecs.map(c => c.format === "1v1" ? 2 : c.format === "2v2" ? 4 : 6);
   let best = null;
   let bestTotal = Infinity;
-  const trials = courtSpecs.length === 1 ? 1 : 80;
+  const trials = courtSpecs.length === 1 ? 1 : 500;
   for (let t = 0; t < trials; t++) {
     const shuffled = [...playing].sort(() => Math.random() - 0.5);
     let total = 0;
@@ -875,10 +877,11 @@ function assignToCourts(playing, courtSpecs, hist, gbf) {
       const fmt = courtSpecs[c].format;
       const group = shuffled.slice(cursor, cursor + size);
       cursor += size;
-      // Format-imbalance penalty: bias toward placing players who have played this format least.
+      // Format-imbalance penalty (squared): strongly bias toward placing players who have played this format least.
       group.forEach(p => {
         const counts = gbf && gbf.get(p.id);
-        total += ((counts && counts[fmt]) || 0) * 2;
+        const cnt = (counts && counts[fmt]) || 0;
+        total += sq(cnt) * 2;
       });
       const split = bestSplit(group, hist);
       total += split.score;
