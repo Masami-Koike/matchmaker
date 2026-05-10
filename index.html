@@ -774,8 +774,15 @@ function totalCourts()   { return courtsForSkill(SKILL_UPPER) + courtsForSkill(S
 function playersNeeded() { return neededForSkill(SKILL_UPPER) + neededForSkill(SKILL_LOWER); }
 function canGenerate() {
   if (totalCourts() < 1) return false;
-  return activeBySkill(SKILL_UPPER).length >= neededForSkill(SKILL_UPPER) &&
-         activeBySkill(SKILL_LOWER).length >= neededForSkill(SKILL_LOWER);
+  const upperActive = activeBySkill(SKILL_UPPER).length;
+  const lowerActive = activeBySkill(SKILL_LOWER).length;
+  const upperNeed  = neededForSkill(SKILL_UPPER);
+  const lowerNeed  = neededForSkill(SKILL_LOWER);
+  // 上級コートは上級プレイヤーだけで埋める必要がある(初中級は上に上げない)
+  if (upperActive < upperNeed) return false;
+  // 上級コートで余った上級プレイヤーは初中級コートに合流できる
+  const upperOverflow = upperActive - upperNeed;
+  return (lowerActive + upperOverflow) >= lowerNeed;
 }
 
 function combinations(n, k) {
@@ -1055,42 +1062,48 @@ function buildSkillCourtSpecs(skill) {
   return specs;
 }
 
-function selectAndAssignSkillGroup(skill, hist, gbf) {
-  const specs = buildSkillCourtSpecs(skill);
-  if (specs.length === 0) return { playing: [], resting: [], matches: [] };
-  const active = activeBySkill(skill);
-  const needed = neededForSkill(skill);
-  const sorted = [...active].sort((a, b) => {
-    if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
-    return Math.random() - 0.5;
-  });
-  const playing = sorted.slice(0, needed);
-  const resting = sorted.slice(needed);
-  const matches = assignToCourts(
-    playing.map(p => ({ id: p.id, name: p.name })),
-    specs,
-    hist,
-    gbf
-  );
-  return { playing, resting, matches };
-}
-
 function generateNextRound() {
   if (!canGenerate()) return;
   const hist = buildPairHistory();
   const gbf = new Map(state.players.map(p => [p.id, p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }]));
 
-  const upper = selectAndAssignSkillGroup(SKILL_UPPER, hist, gbf);
-  const lower = selectAndAssignSkillGroup(SKILL_LOWER, hist, gbf);
+  const sortByGames = arr => [...arr].sort((a, b) => {
+    if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
+    return Math.random() - 0.5;
+  });
 
-  // Continuous court numbering: upper first, then lower
+  const upperActive = activeBySkill(SKILL_UPPER);
+  const lowerActive = activeBySkill(SKILL_LOWER);
+  const upperNeed   = neededForSkill(SKILL_UPPER);
+  const lowerNeed   = neededForSkill(SKILL_LOWER);
+
+  // 上級コートは上級プレイヤーだけで埋める。試合数が少ない順に優先。
+  const upperSorted   = sortByGames(upperActive);
+  const upperPlaying  = upperSorted.slice(0, upperNeed);
+  const upperOverflow = upperSorted.slice(upperNeed);   // 上級にあぶれた人 → 初中級コートへ流れる
+
+  // 初中級コートは「初中級プレイヤー + 上級にあぶれた人」のプールから選ぶ。
+  const lowerPool     = sortByGames([...lowerActive, ...upperOverflow]);
+  const lowerPlaying  = lowerPool.slice(0, lowerNeed);
+  const lowerResting  = lowerPool.slice(lowerNeed);
+
+  const upperSpecs = buildSkillCourtSpecs(SKILL_UPPER);
+  const lowerSpecs = buildSkillCourtSpecs(SKILL_LOWER);
+
+  const upperMatches = upperSpecs.length > 0
+    ? assignToCourts(upperPlaying.map(p => ({ id: p.id, name: p.name })), upperSpecs, hist, gbf)
+    : [];
+  const lowerMatches = lowerSpecs.length > 0
+    ? assignToCourts(lowerPlaying.map(p => ({ id: p.id, name: p.name })), lowerSpecs, hist, gbf)
+    : [];
+
   const allMatches = [];
   let courtNo = 1;
-  upper.matches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_UPPER }));
-  lower.matches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_LOWER }));
+  upperMatches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_UPPER }));
+  lowerMatches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_LOWER }));
 
-  const allPlaying = [...upper.playing, ...lower.playing];
-  const allResting = [...upper.resting, ...lower.resting];
+  const allPlaying = [...upperPlaying, ...lowerPlaying];
+  const allResting = lowerResting; // 上級にあぶれて初中級にも入らなかった分はここに含まれている
 
   allPlaying.forEach(p => {
     const found = state.players.find(x => x.id === p.id);
@@ -1182,7 +1195,9 @@ function renderMatchPage() {
   const lowerNeed = neededForSkill(SKILL_LOWER);
   const needed = upperNeed + lowerNeed;
   const upperOK = upperActive >= upperNeed;
-  const lowerOK = lowerActive >= lowerNeed;
+  const upperOverflow = Math.max(0, upperActive - upperNeed);
+  const lowerPool = lowerActive + upperOverflow;
+  const lowerOK = lowerPool >= lowerNeed;
   const fits = upperOK && lowerOK;
   const playing = (total > 0 && fits) ? needed : 0;
   const resting = active - playing;
@@ -1199,13 +1214,21 @@ function renderMatchPage() {
   } else if (!fits) {
     const parts = [];
     if (!upperOK) parts.push(`上級: あと${upperNeed - upperActive}名`);
-    if (!lowerOK) parts.push(`初中級: あと${lowerNeed - lowerActive}名`);
+    if (!lowerOK) parts.push(`初中級: あと${lowerNeed - lowerPool}名`);
     summary.textContent = parts.join(" / ");
     summary.classList.add("warn");
   } else {
     const parts = [];
     if (upperNeed > 0) parts.push(`上級 ${upperNeed}名`);
-    if (lowerNeed > 0) parts.push(`初中級 ${lowerNeed}名`);
+    if (lowerNeed > 0) {
+      // 上級から初中級へ流入する人数(必要分のみ)
+      const upperToLower = Math.max(0, lowerNeed - lowerActive);
+      if (upperToLower > 0) {
+        parts.push(`初中級 ${lowerNeed}名(うち上級から ${upperToLower}名)`);
+      } else {
+        parts.push(`初中級 ${lowerNeed}名`);
+      }
+    }
     summary.textContent = `合計 ${total} 面 / ${parts.join(" + ")}`;
   }
 
