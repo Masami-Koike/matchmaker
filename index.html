@@ -423,6 +423,59 @@
   /* ===== History ===== */
   .history-round { margin-bottom: 22px; }
 
+  /* ===== Rules page ===== */
+  .rules-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 6px;
+  }
+  .rules-subtitle {
+    font-size: 13px;
+    color: var(--text-faint);
+    margin: 0 0 22px;
+  }
+  .rule-block {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .rule-block h3 {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    margin: 0 0 10px;
+  }
+  .rule-block p {
+    font-size: 14px;
+    line-height: 1.65;
+    margin: 0 0 6px;
+    color: var(--text);
+  }
+  .rule-block p:last-child { margin-bottom: 0; }
+  .rule-block ul {
+    margin: 4px 0 0;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .rule-block li { margin-bottom: 4px; }
+  .rule-block li:last-child { margin-bottom: 0; }
+  .rule-block strong { font-weight: 700; }
+  .rule-block code {
+    background: var(--surface-2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 13px;
+    color: var(--accent);
+    font-family: ui-monospace, SFMono-Regular, monospace;
+  }
+  .rule-star { color: var(--warn); font-weight: 800; }
+  .rule-empty-star { color: var(--text-faint); font-weight: 700; }
+
   /* ===== Modal / menu ===== */
   .sheet-bg {
     position: fixed; inset: 0;
@@ -494,6 +547,7 @@
     <button class="tab active" data-tab="players">プレイヤー</button>
     <button class="tab" data-tab="match">組み合わせ</button>
     <button class="tab" data-tab="history">履歴</button>
+    <button class="tab" data-tab="rules">ルール</button>
   </nav>
 
   <!-- ===== Players ===== -->
@@ -608,6 +662,72 @@
     <div class="empty" id="historyEmpty">
       <div class="big">📋</div>
       <div>まだ履歴がありません</div>
+    </div>
+  </section>
+
+  <!-- ===== Rules ===== -->
+  <section class="page" id="page-rules">
+    <h2 class="rules-title">オトバド ルール</h2>
+    <p class="rules-subtitle">このアプリが組み合わせを作るときに使っているルールです。</p>
+
+    <div class="rule-block">
+      <h3>1. コート構成</h3>
+      <p>各ラウンドのコートは <strong>1v1 / 2v2 / 3v3</strong> から自由に選べ、1ラウンド内で混在可。</p>
+      <p>「<strong class="rule-star">★ 上級コート</strong>」と「初中級コート」を別々に設定でき、それぞれの形式・面数を独立に決められます。</p>
+    </div>
+
+    <div class="rule-block">
+      <h3>2. 実力レベル</h3>
+      <p>各プレイヤーには <span class="rule-star">★</span>(上級)または <span class="rule-empty-star">☆</span>(初中級)を付けます。プレイヤー一覧で名前の右にあるボタンをタップで切替。デフォルトは <strong>初中級(☆)</strong>。</p>
+    </div>
+
+    <div class="rule-block">
+      <h3>3. 上級プレイヤーの「あぶれ」ルール</h3>
+      <ul>
+        <li>上級プレイヤーは <strong>上級コートを優先</strong>して埋める。</li>
+        <li>上級コートに入りきれなかった人は <strong>初中級コートに入って出場できる</strong>(あぶれ救済)。</li>
+        <li>逆に初中級プレイヤーが上級コートに入ることは <strong>不可</strong>。</li>
+      </ul>
+    </div>
+
+    <div class="rule-block">
+      <h3>4. 出場の優先順位</h3>
+      <p>各ラウンドで「<strong>試合数が少ない人</strong>」を優先して出場させ、休憩が均等になるよう配慮します(同数はランダム)。</p>
+    </div>
+
+    <div class="rule-block">
+      <h3>5. 偏り抑制のしくみ</h3>
+      <ul>
+        <li><strong>同じ味方/対戦の繰り返し</strong>を二乗ペナルティで抑制(過去回数²×重み)。</li>
+        <li><strong>形式偏り</strong>(同じ人ばかり 3v3 や 2v2 など)も二乗で抑制。</li>
+        <li><strong>クールダウン</strong>: 直近 3 ラウンド以内に同コートだったペアは強くペナルティを加算し、続けて同コートに置かれにくくする。</li>
+        <li>500 通りのシャッフルから合計スコア最小の組合せを採用。</li>
+      </ul>
+    </div>
+
+    <div class="rule-block">
+      <h3>6. プレイヤー管理</h3>
+      <ul>
+        <li><strong>休む(出場しない)</strong>: 名前左の <code>○/✓</code> 丸印をタップ。試合数とペア履歴は保持される。</li>
+        <li><strong>削除</strong>: プレイヤー一覧上部の「編集」ボタンで編集モードに入ると <code>✕</code> が出現。削除すると履歴が完全に消えるので、休むだけなら丸印を使うこと。</li>
+        <li>同じ名前で再追加しても <strong>別人扱い</strong>(履歴は引き継がれない)。</li>
+      </ul>
+    </div>
+
+    <div class="rule-block">
+      <h3>7. 結果の共有・ダウンロード</h3>
+      <p>右上の <code>⋯</code> メニューから:</p>
+      <ul>
+        <li><strong>結果を共有</strong>: スマホは LINE などの共有シート、PC はクリップボードにコピー</li>
+        <li><strong>ダウンロード (.txt)</strong>: <code>matchmaker-YYYY-MM-DD.txt</code> として保存</li>
+      </ul>
+      <p>集計は <strong>名前ベースで再集計</strong> されるため、削除済みのプレイヤーや、削除→再追加されたプレイヤーも正しい試合数で出ます。</p>
+    </div>
+
+    <div class="rule-block">
+      <h3>8. データの保存</h3>
+      <p>すべてブラウザの <strong>localStorage</strong> に保存されます。サーバーへの送信は一切なし。デバイス内で完結。</p>
+      <p>同じ端末・ブラウザでアクセスすれば履歴が引き継がれますが、別端末や別ブラウザでは別データになります。</p>
     </div>
   </section>
 </div>
