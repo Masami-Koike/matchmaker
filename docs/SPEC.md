@@ -43,7 +43,10 @@
 ```ts
 state = {
   players: Player[],
-  courtConfig: { count1v1: number, count2v2: number, count3v3: number },   // 各 0..20
+  courtConfig: {
+    upper: { count1v1, count2v2, count3v3 },   // 上級コート(各 0..20)
+    lower: { count1v1, count2v2, count3v3 },   // 初中級コート(各 0..20)
+  },
   rounds: Round[],                                       // 先頭が最新
 }
 
@@ -51,6 +54,7 @@ Player = {
   id: string,            // 内部ID(時刻+乱数で生成)
   name: string,          // 表示名(最大20文字)
   isActive: boolean,     // 出場対象かどうか
+  skill: "upper" | "lower",  // 実力レベル(上級 or 初中級、デフォルト lower)
   gamesPlayed: number,   // 通算試合数
   gamesByFormat: { "1v1": number, "2v2": number, "3v3": number },  // 形式別の試合数
 }
@@ -63,10 +67,11 @@ Round = {
 }
 
 Match = {
-  courtNumber: number,           // 1始まり (1v1 → 2v2 → 3v3 の順に番号付け)
-  format: "1v1" | "2v2" | "3v3", // 試合形式
-  teamA: PlayerRef[],            // 1 / 2 / 3 名
-  teamB: PlayerRef[],            // 1 / 2 / 3 名
+  courtNumber: number,             // 1始まり (上級 → 初中級 の順に連番)
+  format: "1v1" | "2v2" | "3v3",   // 試合形式
+  skill: "upper" | "lower",        // どちらの実力グループのコートか
+  teamA: PlayerRef[],              // 1 / 2 / 3 名
+  teamB: PlayerRef[],              // 1 / 2 / 3 名
 }
 
 PlayerRef = { id: string, name: string }
@@ -78,9 +83,12 @@ PlayerRef = { id: string, name: string }
 
 | 旧フィールド | 新フィールド |
 |--------------|--------------|
-| `courtCount: N` (旧 3v3 専用版) | `courtConfig: { count1v1: 0, count2v2: 0, count3v3: N }` |
+| `courtCount: N` (旧 3v3 専用版) | `courtConfig.lower.count3v3 = N`、上級は 0 |
+| `courtConfig: { count1v1, count2v2, count3v3 }` (skill導入前) | `courtConfig.lower` に丸ごと移行、上級は 0 |
 | `courtConfig: { count2v2, count3v3 }` (1v1 追加前) | `count1v1: 0` を補完 |
 | `Match` (formatなし) | `Match.format = "3v3"` を付与 |
+| `Match` (skillなし) | `Match.skill = "lower"` を付与 |
+| `Player` (skillなし) | `Player.skill = "lower"` を付与 |
 | `Player` (gamesByFormatなし) | 過去の `rounds` を走査して各形式の出場回数を再集計し付与 |
 
 マイグレーション後は新キー (`matchmaker_v2`) に保存する。
@@ -101,6 +109,12 @@ PlayerRef = { id: string, name: string }
 - 非アクティブのプレイヤーは組み合わせ生成の対象外だが、`gamesPlayed` / `gamesByFormat` / ペア履歴はそのまま保持される。
 - **「休みたい」時はこちらを使う**(削除と異なり履歴を失わない)。
 
+#### 4.1.2-2 実力レベル(上級/初中級)
+- 各プレイヤーの名前右にある **★/☆** ボタンで `skill` をトグル。
+  - **★** = 上級(`skill = "upper"`)
+  - **☆** = 初中級(`skill = "lower"`、デフォルト)
+- 上級プレイヤーは「上級コート」にのみ、初中級プレイヤーは「初中級コート」にのみ振り分けられる(クロスオーバーなし)。
+
 #### 4.1.3 プレイヤー削除(編集モード)
 - 通常時は削除ボタンは非表示。
 - プレイヤー一覧上部の **「編集」** ボタンで編集モードに入ると、各行に `✕` ボタンが現れる。
@@ -113,8 +127,10 @@ PlayerRef = { id: string, name: string }
 ### 4.2 組み合わせ生成(組み合わせタブ)
 
 #### 4.2.1 コート構成設定
-- **1v1 面数** / **2v2 面数** / **3v3 面数** をそれぞれ `−` `+` で 0〜20 の範囲で設定。
+- 「**★ 上級コート**」セクションと「**初中級コート**」セクションの 2 セクション構成。
+- 各セクションで **1v1 面数** / **2v2 面数** / **3v3 面数** をそれぞれ `−` `+` で 0〜20 の範囲で設定。
 - 合計が 0 のときはサマリーに `コート数を設定してください` を黄色で表示。
+- 実力分けを使わない運用では上級セクションを全部 0 のままにすれば、従来通り全員ミックスで運用可能。
 
 #### 4.2.2 サマリー表示
 コート構成カード下部に状態に応じたメッセージを表示する:
@@ -133,8 +149,10 @@ PlayerRef = { id: string, name: string }
 #### 4.2.4 組み合わせ作成
 - `組み合わせを作成` ボタン押下で生成(詳細は §5)。
 - 以下の場合はボタン無効:
-  - 合計コート数 = 0
-  - 出場対象 < 必要人数(`count1v1 × 2 + count2v2 × 4 + count3v3 × 6`)
+  - 合計コート数(上級+初中級)= 0
+  - 上級プレイヤー数 < 上級必要人数(`upper.count1v1×2 + upper.count2v2×4 + upper.count3v3×6`)
+  - 初中級プレイヤー数 < 初中級必要人数(同様)
+- 不足時はサマリーに「上級: あと N名 / 初中級: あと M名」のように表示。
 
 #### 4.2.5 直前ラウンドの取消
 - `直前のラウンドを取消` で最新ラウンドを削除し、関係者の `gamesPlayed` を -1(0未満にはしない)。
@@ -196,9 +214,11 @@ MatchMaker - YYYY/MM/DD
 ## 5. マッチメイキングアルゴリズム
 
 ### 5.1 出場者の選出
-1. アクティブプレイヤーを `gamesPlayed` 昇順でソート。
+**上級グループと初中級グループは独立に処理される**(履歴やスコア計算は共通)。
+1. 各実力グループ別にアクティブプレイヤーを `gamesPlayed` 昇順でソート。
 2. 同値はランダム順。
-3. 先頭 `count1v1 × 2 + count2v2 × 4 + count3v3 × 6` 名を出場、残りを休憩に割り当て。
+3. グループごとに先頭 `そのグループの necessaryPlayers` 名を出場、残りを休憩。
+4. 上級コートは上級プレイヤーのみで埋め、初中級コートは初中級プレイヤーのみで埋める(クロスオーバーなし)。
 
 ### 5.2 ペア履歴の集計
 全過去ラウンドを走査し、以下の Map を構築:

@@ -355,6 +355,33 @@
     color: var(--teamA);
     background: rgba(76,201,240,0.15);
   }
+
+  /* ===== Skill ===== */
+  .skill-section { margin-bottom: 14px; }
+  .skill-section:last-of-type { margin-bottom: 0; }
+  .skill-section-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    padding: 0 2px;
+  }
+  .skill-section-label.upper { color: var(--warn); }
+  .skill-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: var(--text-faint);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .skill-btn.upper { color: var(--warn); }
+  .skill-mark {
+    color: var(--warn);
+    font-weight: 800;
+    margin-left: 4px;
+  }
   .teams {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -490,32 +517,67 @@
   <section class="page" id="page-match">
     <div class="court-card">
       <div class="court-label">コート構成</div>
-      <div class="format-rows">
-        <div class="format-row">
-          <div class="format-tag tag1v1">1v1</div>
-          <div class="court-stepper">
-            <button class="stepper-btn" id="c1v1Minus" aria-label="1v1を減らす">−</button>
-            <div class="court-num"><span id="c1v1Num">0</span><small>面</small></div>
-            <button class="stepper-btn" id="c1v1Plus" aria-label="1v1を増やす">+</button>
+
+      <div class="skill-section">
+        <div class="skill-section-label upper">★ 上級コート</div>
+        <div class="format-rows">
+          <div class="format-row">
+            <div class="format-tag tag1v1">1v1</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cU1v1Minus" aria-label="上級1v1を減らす">−</button>
+              <div class="court-num"><span id="cU1v1Num">0</span><small>面</small></div>
+              <button class="stepper-btn" id="cU1v1Plus" aria-label="上級1v1を増やす">+</button>
+            </div>
           </div>
-        </div>
-        <div class="format-row">
-          <div class="format-tag tag2v2">2v2</div>
-          <div class="court-stepper">
-            <button class="stepper-btn" id="c2v2Minus" aria-label="2v2を減らす">−</button>
-            <div class="court-num"><span id="c2v2Num">0</span><small>面</small></div>
-            <button class="stepper-btn" id="c2v2Plus" aria-label="2v2を増やす">+</button>
+          <div class="format-row">
+            <div class="format-tag tag2v2">2v2</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cU2v2Minus" aria-label="上級2v2を減らす">−</button>
+              <div class="court-num"><span id="cU2v2Num">0</span><small>面</small></div>
+              <button class="stepper-btn" id="cU2v2Plus" aria-label="上級2v2を増やす">+</button>
+            </div>
           </div>
-        </div>
-        <div class="format-row">
-          <div class="format-tag tag3v3">3v3</div>
-          <div class="court-stepper">
-            <button class="stepper-btn" id="c3v3Minus" aria-label="3v3を減らす">−</button>
-            <div class="court-num"><span id="c3v3Num">1</span><small>面</small></div>
-            <button class="stepper-btn" id="c3v3Plus" aria-label="3v3を増やす">+</button>
+          <div class="format-row">
+            <div class="format-tag tag3v3">3v3</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cU3v3Minus" aria-label="上級3v3を減らす">−</button>
+              <div class="court-num"><span id="cU3v3Num">0</span><small>面</small></div>
+              <button class="stepper-btn" id="cU3v3Plus" aria-label="上級3v3を増やす">+</button>
+            </div>
           </div>
         </div>
       </div>
+
+      <div class="skill-section">
+        <div class="skill-section-label">初中級コート</div>
+        <div class="format-rows">
+          <div class="format-row">
+            <div class="format-tag tag1v1">1v1</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cL1v1Minus" aria-label="初中級1v1を減らす">−</button>
+              <div class="court-num"><span id="cL1v1Num">0</span><small>面</small></div>
+              <button class="stepper-btn" id="cL1v1Plus" aria-label="初中級1v1を増やす">+</button>
+            </div>
+          </div>
+          <div class="format-row">
+            <div class="format-tag tag2v2">2v2</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cL2v2Minus" aria-label="初中級2v2を減らす">−</button>
+              <div class="court-num"><span id="cL2v2Num">0</span><small>面</small></div>
+              <button class="stepper-btn" id="cL2v2Plus" aria-label="初中級2v2を増やす">+</button>
+            </div>
+          </div>
+          <div class="format-row">
+            <div class="format-tag tag3v3">3v3</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cL3v3Minus" aria-label="初中級3v3を減らす">−</button>
+              <div class="court-num"><span id="cL3v3Num">1</span><small>面</small></div>
+              <button class="stepper-btn" id="cL3v3Plus" aria-label="初中級3v3を増やす">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="court-summary" id="courtSummary">合計 1 面 / 6 名で実施</div>
     </div>
 
@@ -574,10 +636,16 @@ const LEGACY_KEY  = "matchmaker3v3_v1";
 const COURT_MAX   = 20;
 
 // ----- State -----
+const SKILL_UPPER = "upper";
+const SKILL_LOWER = "lower";
+const emptyFormatCounts = () => ({ count1v1: 0, count2v2: 0, count3v3: 0 });
 let state = {
-  players: [],               // { id, name, isActive, gamesPlayed }
-  courtConfig: { count1v1: 0, count2v2: 0, count3v3: 1 },
-  rounds: [],                // { roundNumber, matches:[{courtNumber, format, teamA, teamB}], resting, timestamp }
+  players: [],               // { id, name, isActive, gamesPlayed, skill: "upper"|"lower" }
+  courtConfig: {
+    upper: emptyFormatCounts(),
+    lower: { count1v1: 0, count2v2: 0, count3v3: 1 },
+  },
+  rounds: [],                // matches: [{courtNumber, format, skill, teamA, teamB}]
 };
 let editMode = false;        // not persisted
 
@@ -607,18 +675,45 @@ function load() {
     if (!parsed) return;
     if (Array.isArray(parsed.players)) state.players = parsed.players;
     if (parsed.courtConfig && typeof parsed.courtConfig === "object") {
-      state.courtConfig = {
-        count1v1: clampCourt(parsed.courtConfig.count1v1),
-        count2v2: clampCourt(parsed.courtConfig.count2v2),
-        count3v3: clampCourt(parsed.courtConfig.count3v3),
-      };
-      if (state.courtConfig.count1v1 + state.courtConfig.count2v2 + state.courtConfig.count3v3 === 0) {
-        state.courtConfig.count3v3 = 1;
+      const cfg = parsed.courtConfig;
+      // Newest schema: { upper: {...}, lower: {...} }
+      if (cfg.upper || cfg.lower) {
+        state.courtConfig = {
+          upper: {
+            count1v1: clampCourt(cfg.upper && cfg.upper.count1v1),
+            count2v2: clampCourt(cfg.upper && cfg.upper.count2v2),
+            count3v3: clampCourt(cfg.upper && cfg.upper.count3v3),
+          },
+          lower: {
+            count1v1: clampCourt(cfg.lower && cfg.lower.count1v1),
+            count2v2: clampCourt(cfg.lower && cfg.lower.count2v2),
+            count3v3: clampCourt(cfg.lower && cfg.lower.count3v3),
+          },
+        };
+      } else {
+        // Mid-era schema: flat { count1v1, count2v2, count3v3 } → all to lower
+        state.courtConfig = {
+          upper: emptyFormatCounts(),
+          lower: {
+            count1v1: clampCourt(cfg.count1v1),
+            count2v2: clampCourt(cfg.count2v2),
+            count3v3: clampCourt(cfg.count3v3),
+          },
+        };
       }
+      const totalNow =
+        state.courtConfig.upper.count1v1 + state.courtConfig.upper.count2v2 + state.courtConfig.upper.count3v3 +
+        state.courtConfig.lower.count1v1 + state.courtConfig.lower.count2v2 + state.courtConfig.lower.count3v3;
+      if (totalNow === 0) state.courtConfig.lower.count3v3 = 1;
     } else if (typeof parsed.courtCount === "number") {
       const n = clampCourt(parsed.courtCount) || 1;
-      state.courtConfig = { count1v1: 0, count2v2: 0, count3v3: n };
+      state.courtConfig = {
+        upper: emptyFormatCounts(),
+        lower: { count1v1: 0, count2v2: 0, count3v3: n },
+      };
     }
+    // Default skill = lower for legacy player records
+    state.players.forEach(p => { if (p.skill !== SKILL_UPPER) p.skill = SKILL_LOWER; });
     if (Array.isArray(parsed.rounds)) {
       state.rounds = parsed.rounds.map(r => ({
         roundNumber: r.roundNumber,
@@ -627,6 +722,7 @@ function load() {
         matches: (r.matches || []).map(m => ({
           courtNumber: m.courtNumber,
           format: (m.format === "1v1" || m.format === "2v2") ? m.format : "3v3",
+          skill: m.skill === SKILL_UPPER ? SKILL_UPPER : SKILL_LOWER,
           teamA: m.teamA || [],
           teamB: m.teamB || [],
         })),
@@ -663,9 +759,24 @@ function showToast(msg) {
   showToast._t = setTimeout(() => t.classList.remove("show"), 1600);
 }
 function activePlayers() { return state.players.filter(p => p.isActive); }
-function totalCourts()   { return state.courtConfig.count1v1 + state.courtConfig.count2v2 + state.courtConfig.count3v3; }
-function playersNeeded() { return state.courtConfig.count1v1 * 2 + state.courtConfig.count2v2 * 4 + state.courtConfig.count3v3 * 6; }
-function canGenerate()   { return totalCourts() >= 1 && activePlayers().length >= playersNeeded(); }
+function activeBySkill(skill) {
+  return state.players.filter(p => p.isActive && (p.skill || SKILL_LOWER) === skill);
+}
+function courtsForSkill(skill) {
+  const c = state.courtConfig[skill];
+  return c.count1v1 + c.count2v2 + c.count3v3;
+}
+function neededForSkill(skill) {
+  const c = state.courtConfig[skill];
+  return c.count1v1 * 2 + c.count2v2 * 4 + c.count3v3 * 6;
+}
+function totalCourts()   { return courtsForSkill(SKILL_UPPER) + courtsForSkill(SKILL_LOWER); }
+function playersNeeded() { return neededForSkill(SKILL_UPPER) + neededForSkill(SKILL_LOWER); }
+function canGenerate() {
+  if (totalCourts() < 1) return false;
+  return activeBySkill(SKILL_UPPER).length >= neededForSkill(SKILL_UPPER) &&
+         activeBySkill(SKILL_LOWER).length >= neededForSkill(SKILL_LOWER);
+}
 
 function combinations(n, k) {
   const result = [];
@@ -685,9 +796,16 @@ function addPlayer(name) {
   if (!trimmed) return;
   state.players.push({
     id: uid(), name: trimmed, isActive: true,
+    skill: SKILL_LOWER,
     gamesPlayed: 0,
     gamesByFormat: { "1v1": 0, "2v2": 0, "3v3": 0 },
   });
+  save(); renderAll();
+}
+function toggleSkill(id) {
+  const p = state.players.find(x => x.id === id);
+  if (!p) return;
+  p.skill = (p.skill === SKILL_UPPER) ? SKILL_LOWER : SKILL_UPPER;
   save(); renderAll();
 }
 function removePlayer(id) {
@@ -708,7 +826,11 @@ function resetGames() {
   showToast("試合数をリセットしました");
 }
 function resetAll() {
-  state = { players: [], courtConfig: { count1v1: 0, count2v2: 0, count3v3: 1 }, rounds: [] };
+  state = {
+    players: [],
+    courtConfig: { upper: emptyFormatCounts(), lower: { count1v1: 0, count2v2: 0, count3v3: 1 } },
+    rounds: [],
+  };
   save(); renderAll();
   showToast("全データをリセットしました");
 }
@@ -729,7 +851,8 @@ function buildShareText() {
     r.matches.forEach(m => {
       const a = m.teamA.map(p => p.name).join("・");
       const b = m.teamB.map(p => p.name).join("・");
-      lines.push(`コート${m.courtNumber} [${m.format}]: ${a} vs ${b}`);
+      const skillTag = m.skill === SKILL_UPPER ? " ★" : "";
+      lines.push(`コート${m.courtNumber} [${m.format}${skillTag}]: ${a} vs ${b}`);
     });
     if (r.resting && r.resting.length > 0) {
       lines.push(`休憩: ${r.resting.map(p => p.name).join(", ")}`);
@@ -897,38 +1020,57 @@ function assignToCourts(playing, courtSpecs, hist, gbf) {
   return best;
 }
 
-function generateNextRound() {
-  if (!canGenerate()) return;
-  const cfg = state.courtConfig;
-  const active = activePlayers();
-  const needed = playersNeeded();
+function buildSkillCourtSpecs(skill) {
+  const c = state.courtConfig[skill];
+  const specs = [];
+  for (let i = 0; i < c.count1v1; i++) specs.push({ format: "1v1", skill });
+  for (let i = 0; i < c.count2v2; i++) specs.push({ format: "2v2", skill });
+  for (let i = 0; i < c.count3v3; i++) specs.push({ format: "3v3", skill });
+  return specs;
+}
 
+function selectAndAssignSkillGroup(skill, hist, gbf) {
+  const specs = buildSkillCourtSpecs(skill);
+  if (specs.length === 0) return { playing: [], resting: [], matches: [] };
+  const active = activeBySkill(skill);
+  const needed = neededForSkill(skill);
   const sorted = [...active].sort((a, b) => {
     if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
     return Math.random() - 0.5;
   });
   const playing = sorted.slice(0, needed);
   const resting = sorted.slice(needed);
-
-  const courtSpecs = [];
-  for (let i = 0; i < cfg.count1v1; i++) courtSpecs.push({ format: "1v1" });
-  for (let i = 0; i < cfg.count2v2; i++) courtSpecs.push({ format: "2v2" });
-  for (let i = 0; i < cfg.count3v3; i++) courtSpecs.push({ format: "3v3" });
-
-  const hist = buildPairHistory();
-  const gbf = new Map(state.players.map(p => [p.id, p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }]));
   const matches = assignToCourts(
     playing.map(p => ({ id: p.id, name: p.name })),
-    courtSpecs,
+    specs,
     hist,
     gbf
   );
+  return { playing, resting, matches };
+}
 
-  playing.forEach(p => {
+function generateNextRound() {
+  if (!canGenerate()) return;
+  const hist = buildPairHistory();
+  const gbf = new Map(state.players.map(p => [p.id, p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }]));
+
+  const upper = selectAndAssignSkillGroup(SKILL_UPPER, hist, gbf);
+  const lower = selectAndAssignSkillGroup(SKILL_LOWER, hist, gbf);
+
+  // Continuous court numbering: upper first, then lower
+  const allMatches = [];
+  let courtNo = 1;
+  upper.matches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_UPPER }));
+  lower.matches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_LOWER }));
+
+  const allPlaying = [...upper.playing, ...lower.playing];
+  const allResting = [...upper.resting, ...lower.resting];
+
+  allPlaying.forEach(p => {
     const found = state.players.find(x => x.id === p.id);
     if (found) found.gamesPlayed += 1;
   });
-  matches.forEach(m => {
+  allMatches.forEach(m => {
     [...m.teamA, ...m.teamB].forEach(ref => {
       const found = state.players.find(x => x.id === ref.id);
       if (!found) return;
@@ -939,8 +1081,8 @@ function generateNextRound() {
 
   state.rounds.unshift({
     roundNumber: state.rounds.length + 1,
-    matches,
-    resting: resting.map(p => ({ id: p.id, name: p.name })),
+    matches: allMatches,
+    resting: allResting.map(p => ({ id: p.id, name: p.name })),
     timestamp: Date.now(),
   });
 
@@ -980,9 +1122,11 @@ function renderPlayers() {
   state.players.forEach(p => {
     const li = document.createElement("li");
     li.className = "player-item" + (p.isActive ? "" : " inactive");
+    const isUpper = (p.skill || SKILL_LOWER) === SKILL_UPPER;
     li.innerHTML = `
       <button class="check ${p.isActive ? "on" : ""}" data-action="toggle" data-id="${p.id}" aria-label="出場切替"></button>
       <div class="player-name"></div>
+      <button class="skill-btn ${isUpper ? "upper" : ""}" data-action="skill" data-id="${p.id}" aria-label="上級切替">${isUpper ? "★" : "☆"}</button>
       <span class="games-badge">${p.gamesPlayed} 試合</span>
       ${editMode ? `<button class="delete-btn" data-action="del" data-id="${p.id}" aria-label="削除">✕</button>` : ""}
     `;
@@ -993,20 +1137,27 @@ function renderPlayers() {
 
 function renderMatchPage() {
   const cfg = state.courtConfig;
-  document.getElementById("c1v1Num").textContent = cfg.count1v1;
-  document.getElementById("c2v2Num").textContent = cfg.count2v2;
-  document.getElementById("c3v3Num").textContent = cfg.count3v3;
-  document.getElementById("c1v1Minus").disabled = cfg.count1v1 <= 0;
-  document.getElementById("c1v1Plus").disabled  = cfg.count1v1 >= COURT_MAX;
-  document.getElementById("c2v2Minus").disabled = cfg.count2v2 <= 0;
-  document.getElementById("c2v2Plus").disabled  = cfg.count2v2 >= COURT_MAX;
-  document.getElementById("c3v3Minus").disabled = cfg.count3v3 <= 0;
-  document.getElementById("c3v3Plus").disabled  = cfg.count3v3 >= COURT_MAX;
+  ["U", "L"].forEach(prefix => {
+    const skill = prefix === "U" ? SKILL_UPPER : SKILL_LOWER;
+    ["1v1", "2v2", "3v3"].forEach(fmt => {
+      const k = `count${fmt}`;
+      const cnt = cfg[skill][k];
+      document.getElementById(`c${prefix}${fmt}Num`).textContent = cnt;
+      document.getElementById(`c${prefix}${fmt}Minus`).disabled = cnt <= 0;
+      document.getElementById(`c${prefix}${fmt}Plus`).disabled  = cnt >= COURT_MAX;
+    });
+  });
 
-  const active = activePlayers().length;
+  const upperActive = activeBySkill(SKILL_UPPER).length;
+  const lowerActive = activeBySkill(SKILL_LOWER).length;
+  const active = upperActive + lowerActive;
   const total = totalCourts();
-  const needed = playersNeeded();
-  const fits = active >= needed;
+  const upperNeed = neededForSkill(SKILL_UPPER);
+  const lowerNeed = neededForSkill(SKILL_LOWER);
+  const needed = upperNeed + lowerNeed;
+  const upperOK = upperActive >= upperNeed;
+  const lowerOK = lowerActive >= lowerNeed;
+  const fits = upperOK && lowerOK;
   const playing = (total > 0 && fits) ? needed : 0;
   const resting = active - playing;
 
@@ -1020,10 +1171,16 @@ function renderMatchPage() {
     summary.textContent = "コート数を設定してください";
     summary.classList.add("warn");
   } else if (!fits) {
-    summary.textContent = `あと ${needed - active} 名必要 (合計 ${needed} 名 / ${total} 面)`;
+    const parts = [];
+    if (!upperOK) parts.push(`上級: あと${upperNeed - upperActive}名`);
+    if (!lowerOK) parts.push(`初中級: あと${lowerNeed - lowerActive}名`);
+    summary.textContent = parts.join(" / ");
     summary.classList.add("warn");
   } else {
-    summary.textContent = `合計 ${total} 面 / ${needed} 名で実施`;
+    const parts = [];
+    if (upperNeed > 0) parts.push(`上級 ${upperNeed}名`);
+    if (lowerNeed > 0) parts.push(`初中級 ${lowerNeed}名`);
+    summary.textContent = `合計 ${total} 面 / ${parts.join(" + ")}`;
   }
 
   document.getElementById("generateBtn").disabled = !canGenerate();
@@ -1042,10 +1199,11 @@ function renderRoundHTML(round, isLatest) {
   `;
   round.matches.forEach(m => {
     const fmt = (m.format === "1v1" || m.format === "2v2") ? m.format : "3v3";
+    const upper = m.skill === SKILL_UPPER;
     html += `
       <div class="court-block">
         <div class="court-block-header">
-          <span class="court-block-num">コート ${m.courtNumber}</span>
+          <span class="court-block-num">コート ${m.courtNumber}${upper ? `<span class="skill-mark">★</span>` : ""}</span>
           <span class="format-tag-small tag${fmt}">${fmt}</span>
         </div>
         <div class="teams">
@@ -1144,6 +1302,7 @@ document.getElementById("playerList").addEventListener("click", e => {
   if (!btn) return;
   const id = btn.dataset.id;
   if (btn.dataset.action === "toggle") toggleActive(id);
+  if (btn.dataset.action === "skill") toggleSkill(id);
   if (btn.dataset.action === "del") {
     const p = state.players.find(x => x.id === id);
     const name = p ? p.name : "";
@@ -1164,23 +1323,25 @@ document.getElementById("editPlayersBtn").addEventListener("click", () => {
   renderPlayers();
 });
 
-document.getElementById("c1v1Minus").addEventListener("click", () => {
-  if (state.courtConfig.count1v1 > 0) { state.courtConfig.count1v1--; save(); renderMatchPage(); }
-});
-document.getElementById("c1v1Plus").addEventListener("click", () => {
-  if (state.courtConfig.count1v1 < COURT_MAX) { state.courtConfig.count1v1++; save(); renderMatchPage(); }
-});
-document.getElementById("c2v2Minus").addEventListener("click", () => {
-  if (state.courtConfig.count2v2 > 0) { state.courtConfig.count2v2--; save(); renderMatchPage(); }
-});
-document.getElementById("c2v2Plus").addEventListener("click", () => {
-  if (state.courtConfig.count2v2 < COURT_MAX) { state.courtConfig.count2v2++; save(); renderMatchPage(); }
-});
-document.getElementById("c3v3Minus").addEventListener("click", () => {
-  if (state.courtConfig.count3v3 > 0) { state.courtConfig.count3v3--; save(); renderMatchPage(); }
-});
-document.getElementById("c3v3Plus").addEventListener("click", () => {
-  if (state.courtConfig.count3v3 < COURT_MAX) { state.courtConfig.count3v3++; save(); renderMatchPage(); }
+[
+  ["U", SKILL_UPPER],
+  ["L", SKILL_LOWER],
+].forEach(([prefix, skill]) => {
+  ["1v1", "2v2", "3v3"].forEach(fmt => {
+    const key = `count${fmt}`;
+    document.getElementById(`c${prefix}${fmt}Minus`).addEventListener("click", () => {
+      if (state.courtConfig[skill][key] > 0) {
+        state.courtConfig[skill][key]--;
+        save(); renderMatchPage();
+      }
+    });
+    document.getElementById(`c${prefix}${fmt}Plus`).addEventListener("click", () => {
+      if (state.courtConfig[skill][key] < COURT_MAX) {
+        state.courtConfig[skill][key]++;
+        save(); renderMatchPage();
+      }
+    });
+  });
 });
 
 document.getElementById("generateBtn").addEventListener("click", () => {
