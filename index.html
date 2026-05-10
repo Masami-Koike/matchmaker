@@ -530,6 +530,8 @@
 <div class="sheet-bg" id="menuSheet">
   <div class="sheet">
     <div class="sheet-handle"></div>
+    <button class="sheet-btn" id="shareBtn">結果を共有</button>
+    <button class="sheet-btn" id="downloadBtn">ダウンロード (.txt)</button>
     <button class="sheet-btn danger" id="resetGamesBtn">試合数をリセット</button>
     <button class="sheet-btn danger" id="resetAllBtn">全データをリセット</button>
     <button class="sheet-btn cancel" id="closeSheetBtn">キャンセル</button>
@@ -684,6 +686,91 @@ function resetAll() {
   state = { players: [], courtConfig: { count1v1: 0, count2v2: 0, count3v3: 1 }, rounds: [] };
   save(); renderAll();
   showToast("全データをリセットしました");
+}
+
+// ----- Share / Download -----
+function buildShareText() {
+  if (state.rounds.length === 0) return "";
+  const now = new Date();
+  const ymd = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")}`;
+  const lines = [];
+  lines.push(`MatchMaker - ${ymd}`);
+  lines.push("");
+  // Replay rounds in chronological order (state.rounds is newest-first)
+  [...state.rounds].reverse().forEach(r => {
+    const t = new Date(r.timestamp);
+    const time = `${t.getHours()}:${String(t.getMinutes()).padStart(2,"0")}`;
+    lines.push(`【ラウンド ${r.roundNumber}】 ${time}`);
+    r.matches.forEach(m => {
+      const a = m.teamA.map(p => p.name).join("・");
+      const b = m.teamB.map(p => p.name).join("・");
+      lines.push(`コート${m.courtNumber} [${m.format}]: ${a} vs ${b}`);
+    });
+    if (r.resting && r.resting.length > 0) {
+      lines.push(`休憩: ${r.resting.map(p => p.name).join(", ")}`);
+    }
+    lines.push("");
+  });
+  // Player tally
+  const tally = state.players.filter(p => p.gamesPlayed > 0)
+    .sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+  if (tally.length > 0) {
+    lines.push("---");
+    lines.push("集計");
+    tally.forEach(p => {
+      const fb = p.gamesByFormat || {};
+      lines.push(`${p.name}: ${p.gamesPlayed}試合 (1v1:${fb["1v1"]||0}, 2v2:${fb["2v2"]||0}, 3v3:${fb["3v3"]||0})`);
+    });
+  }
+  return lines.join("\n");
+}
+
+function todayFilename() {
+  const d = new Date();
+  const ymd = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  return `matchmaker-${ymd}.txt`;
+}
+
+function downloadText(text, filename) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function shareResults() {
+  const text = buildShareText();
+  if (!text) { showToast("履歴がありません"); return; }
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "MatchMaker", text });
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") return;
+    }
+  }
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("結果をコピーしました");
+      return;
+    } catch (e) { /* fall through */ }
+  }
+  // Final fallback
+  downloadText(text, todayFilename());
+  showToast("ダウンロードしました");
+}
+
+function downloadResults() {
+  const text = buildShareText();
+  if (!text) { showToast("履歴がありません"); return; }
+  downloadText(text, todayFilename());
+  showToast("ダウンロードしました");
 }
 
 // ----- Match generation -----
@@ -1059,6 +1146,14 @@ const sheet = document.getElementById("menuSheet");
 document.getElementById("menuBtn").addEventListener("click", () => sheet.classList.add("show"));
 document.getElementById("closeSheetBtn").addEventListener("click", () => sheet.classList.remove("show"));
 sheet.addEventListener("click", e => { if (e.target === sheet) sheet.classList.remove("show"); });
+document.getElementById("shareBtn").addEventListener("click", () => {
+  shareResults();
+  sheet.classList.remove("show");
+});
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  downloadResults();
+  sheet.classList.remove("show");
+});
 document.getElementById("resetGamesBtn").addEventListener("click", () => {
   if (confirm("全員の試合数をリセットしますか?(履歴も消えます)")) {
     resetGames();
