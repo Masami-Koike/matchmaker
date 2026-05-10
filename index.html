@@ -936,9 +936,11 @@ function downloadResults() {
 function buildPairHistory() {
   const teammate = new Map();
   const opponent = new Map();
+  const sameCourtLast = new Map();   // pair → round index of last same-court appearance (0 = most recent)
   const key = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
   const add = (m, a, b) => { const k = key(a, b); m.set(k, (m.get(k) || 0) + 1); };
-  state.rounds.forEach(r => {
+  // state.rounds is newest-first, so idx 0 = the most recent finished round.
+  state.rounds.forEach((r, idx) => {
     r.matches.forEach(m => {
       for (let i = 0; i < m.teamA.length; i++)
         for (let j = i + 1; j < m.teamA.length; j++)
@@ -947,12 +949,33 @@ function buildPairHistory() {
         for (let j = i + 1; j < m.teamB.length; j++)
           add(teammate, m.teamB[i].id, m.teamB[j].id);
       m.teamA.forEach(a => m.teamB.forEach(b => add(opponent, a.id, b.id)));
+      // Track most recent same-court appearance for the cooldown penalty.
+      const allOnCourt = [...m.teamA, ...m.teamB];
+      for (let i = 0; i < allOnCourt.length; i++) {
+        for (let j = i + 1; j < allOnCourt.length; j++) {
+          const k = key(allOnCourt[i].id, allOnCourt[j].id);
+          if (!sameCourtLast.has(k)) sameCourtLast.set(k, idx);
+        }
+      }
     });
   });
-  return { teammate, opponent };
+  return { teammate, opponent, sameCourtLast };
 }
 
 // 4人または6人をA/Bに最適分割。team sizeはplayers.length/2で決まる。
+// Cooldown penalty: pairs that were on the same court within the last
+// COOLDOWN rounds get an extra heavy penalty. Encourages spacing out repeats.
+const COOLDOWN = 3;
+const COOLDOWN_W = 30;
+function cooldownPenalty(hist, aId, bId) {
+  const m = hist.sameCourtLast;
+  if (!m) return 0;
+  const k = (aId < bId ? aId + "|" + bId : bId + "|" + aId);
+  const lastIdx = m.get(k);
+  if (lastIdx === undefined || lastIdx >= COOLDOWN) return 0;
+  return (COOLDOWN - lastIdx) * COOLDOWN_W;
+}
+
 function bestSplit(players, hist) {
   const key = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
   const get = (m, a, b) => m.get(key(a, b)) || 0;
@@ -970,11 +993,14 @@ function bestSplit(players, hist) {
     for (let i = 0; i < teamSize; i++)
       for (let j = i + 1; j < teamSize; j++) {
         score += sq(get(hist.teammate, teamA[i].id, teamA[j].id)) * 3;
+        score += cooldownPenalty(hist, teamA[i].id, teamA[j].id);
         score += sq(get(hist.teammate, teamB[i].id, teamB[j].id)) * 3;
+        score += cooldownPenalty(hist, teamB[i].id, teamB[j].id);
       }
     for (let i = 0; i < teamSize; i++)
       for (let j = 0; j < teamSize; j++) {
         score += sq(get(hist.opponent, teamA[i].id, teamB[j].id)) * 2;
+        score += cooldownPenalty(hist, teamA[i].id, teamB[j].id);
       }
     score += Math.random() * 0.01;
     if (score < bestScore) { bestScore = score; best = { teamA, teamB, score }; }
