@@ -143,6 +143,26 @@
   .stat-value.accent { color: var(--accent); }
 
   /* ===== Player list ===== */
+  .player-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+  .player-list-hint {
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .edit-btn {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+  .edit-btn.active { background: var(--accent-soft); }
+
   .player-list { list-style: none; padding: 0; margin: 0; }
   .player-item {
     display: flex; align-items: center; gap: 12px;
@@ -455,6 +475,10 @@
       <input id="nameInput" type="text" placeholder="名前を入力" maxlength="20" autocomplete="off">
       <button class="add-btn" id="addBtn">追加</button>
     </div>
+    <div class="player-list-header" id="playerListHeader" style="display:none;">
+      <span class="player-list-hint">丸印タップで出場/休みを切替</span>
+      <button class="edit-btn" id="editPlayersBtn">編集</button>
+    </div>
     <ul class="player-list" id="playerList"></ul>
     <div class="empty" id="playersEmpty" style="display:none;">
       <div class="big">👥</div>
@@ -555,6 +579,7 @@ let state = {
   courtConfig: { count1v1: 0, count2v2: 0, count3v3: 1 },
   rounds: [],                // { roundNumber, matches:[{courtNumber, format, teamA, teamB}], resting, timestamp }
 };
+let editMode = false;        // not persisted
 
 // ----- Storage / migration -----
 function clampCourt(n) {
@@ -711,16 +736,27 @@ function buildShareText() {
     }
     lines.push("");
   });
-  // Player tally
-  const tally = state.players.filter(p => p.gamesPlayed > 0)
-    .sort((a, b) => b.gamesPlayed - a.gamesPlayed);
-  if (tally.length > 0) {
+  // Player tally — 名前ベースで rounds から集計し直す
+  // (削除→再追加されたプレイヤーや、すでに削除されたプレイヤーも正しく数える)
+  const byName = new Map();
+  state.rounds.forEach(r => {
+    r.matches.forEach(m => {
+      [...m.teamA, ...m.teamB].forEach(p => {
+        if (!byName.has(p.name)) byName.set(p.name, { total: 0, "1v1": 0, "2v2": 0, "3v3": 0 });
+        const t = byName.get(p.name);
+        t.total++;
+        t[m.format] = (t[m.format] || 0) + 1;
+      });
+    });
+  });
+  if (byName.size > 0) {
     lines.push("---");
     lines.push("集計");
-    tally.forEach(p => {
-      const fb = p.gamesByFormat || {};
-      lines.push(`${p.name}: ${p.gamesPlayed}試合 (1v1:${fb["1v1"]||0}, 2v2:${fb["2v2"]||0}, 3v3:${fb["3v3"]||0})`);
-    });
+    [...byName.entries()]
+      .sort((a, b) => b[1].total - a[1].total)
+      .forEach(([name, t]) => {
+        lines.push(`${name}: ${t.total}試合 (1v1:${t["1v1"]}, 2v2:${t["2v2"]}, 3v3:${t["3v3"]})`);
+      });
   }
   return lines.join("\n");
 }
@@ -929,12 +965,15 @@ function undoLastRound() {
 function renderPlayers() {
   const list = document.getElementById("playerList");
   const empty = document.getElementById("playersEmpty");
+  const header = document.getElementById("playerListHeader");
   list.innerHTML = "";
   if (state.players.length === 0) {
     empty.style.display = "block";
+    header.style.display = "none";
     return;
   }
   empty.style.display = "none";
+  header.style.display = "flex";
   state.players.forEach(p => {
     const li = document.createElement("li");
     li.className = "player-item" + (p.isActive ? "" : " inactive");
@@ -942,7 +981,7 @@ function renderPlayers() {
       <button class="check ${p.isActive ? "on" : ""}" data-action="toggle" data-id="${p.id}" aria-label="出場切替"></button>
       <div class="player-name"></div>
       <span class="games-badge">${p.gamesPlayed} 試合</span>
-      <button class="delete-btn" data-action="del" data-id="${p.id}" aria-label="削除">✕</button>
+      ${editMode ? `<button class="delete-btn" data-action="del" data-id="${p.id}" aria-label="削除">✕</button>` : ""}
     `;
     li.querySelector(".player-name").textContent = p.name;
     list.appendChild(li);
@@ -1103,8 +1142,23 @@ document.getElementById("playerList").addEventListener("click", e => {
   const id = btn.dataset.id;
   if (btn.dataset.action === "toggle") toggleActive(id);
   if (btn.dataset.action === "del") {
-    if (confirm("このプレイヤーを削除しますか?")) removePlayer(id);
+    const p = state.players.find(x => x.id === id);
+    const name = p ? p.name : "";
+    const msg =
+      `「${name}」を削除しますか?\n\n` +
+      `⚠ 試合数と過去のペア履歴がリセットされます。\n` +
+      `同じ名前で再追加しても別人として扱われます(履歴は引き継がれません)。\n\n` +
+      `一時的に休む場合は「キャンセル」して、丸印タップで「休み」に切り替えてください。`;
+    if (confirm(msg)) removePlayer(id);
   }
+});
+
+document.getElementById("editPlayersBtn").addEventListener("click", () => {
+  editMode = !editMode;
+  const btn = document.getElementById("editPlayersBtn");
+  btn.classList.toggle("active", editMode);
+  btn.textContent = editMode ? "完了" : "編集";
+  renderPlayers();
 });
 
 document.getElementById("c1v1Minus").addEventListener("click", () => {
