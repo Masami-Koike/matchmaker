@@ -203,6 +203,53 @@
     display: grid; place-items: center;
   }
   .delete-btn:active { background: rgba(247,37,133,0.15); color: var(--teamB); }
+  .ng-btn {
+    width: auto; min-width: 32px; height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    color: var(--text-faint);
+    font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-2);
+  }
+  .ng-btn:active { background: rgba(247,37,133,0.15); color: var(--teamB); }
+  .ng-btn.has { color: var(--teamB); background: rgba(247,37,133,0.10); }
+  .ng-mark {
+    color: var(--teamB);
+    font-size: 11px; font-weight: 700;
+    margin-left: 6px;
+  }
+  .ng-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ng-row:last-child { border-bottom: none; }
+  .ng-row .name { flex: 1; font-size: 15px; }
+  .ng-row .toggle {
+    width: 44px; height: 28px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    position: relative;
+    transition: background 0.15s;
+  }
+  .ng-row .toggle::after {
+    content: "";
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    transition: transform 0.15s, background 0.15s;
+  }
+  .ng-row.on .toggle { background: rgba(247,37,133,0.25); }
+  .ng-row.on .toggle::after { transform: translateX(16px); background: var(--teamB); }
+  .ng-sheet-title {
+    font-size: 16px; font-weight: 700;
+    padding: 4px 4px 12px;
+  }
+  .ng-sheet-list { max-height: 60vh; overflow-y: auto; }
+  .ng-sheet-empty { color: var(--text-faint); font-size: 14px; padding: 16px 4px; text-align: center; }
 
   .empty {
     text-align: center;
@@ -574,6 +621,36 @@
       <div class="court-label">コート構成</div>
 
       <div class="skill-section">
+        <div class="skill-section-label">ランダムコート</div>
+        <div class="format-rows">
+          <div class="format-row">
+            <div class="format-tag tag1v1">1v1</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cL1v1Minus" aria-label="ランダム1v1を減らす">−</button>
+              <div class="court-num"><span id="cL1v1Num">0</span><small>面</small></div>
+              <button class="stepper-btn" id="cL1v1Plus" aria-label="ランダム1v1を増やす">+</button>
+            </div>
+          </div>
+          <div class="format-row">
+            <div class="format-tag tag2v2">2v2</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cL2v2Minus" aria-label="ランダム2v2を減らす">−</button>
+              <div class="court-num"><span id="cL2v2Num">0</span><small>面</small></div>
+              <button class="stepper-btn" id="cL2v2Plus" aria-label="ランダム2v2を増やす">+</button>
+            </div>
+          </div>
+          <div class="format-row">
+            <div class="format-tag tag3v3">3v3</div>
+            <div class="court-stepper">
+              <button class="stepper-btn" id="cL3v3Minus" aria-label="ランダム3v3を減らす">−</button>
+              <div class="court-num"><span id="cL3v3Num">1</span><small>面</small></div>
+              <button class="stepper-btn" id="cL3v3Plus" aria-label="ランダム3v3を増やす">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="skill-section">
         <div class="skill-section-label upper">★ 上級コート</div>
         <div class="format-rows">
           <div class="format-row">
@@ -598,36 +675,6 @@
               <button class="stepper-btn" id="cU3v3Minus" aria-label="上級3v3を減らす">−</button>
               <div class="court-num"><span id="cU3v3Num">0</span><small>面</small></div>
               <button class="stepper-btn" id="cU3v3Plus" aria-label="上級3v3を増やす">+</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="skill-section">
-        <div class="skill-section-label">初中級コート</div>
-        <div class="format-rows">
-          <div class="format-row">
-            <div class="format-tag tag1v1">1v1</div>
-            <div class="court-stepper">
-              <button class="stepper-btn" id="cL1v1Minus" aria-label="初中級1v1を減らす">−</button>
-              <div class="court-num"><span id="cL1v1Num">0</span><small>面</small></div>
-              <button class="stepper-btn" id="cL1v1Plus" aria-label="初中級1v1を増やす">+</button>
-            </div>
-          </div>
-          <div class="format-row">
-            <div class="format-tag tag2v2">2v2</div>
-            <div class="court-stepper">
-              <button class="stepper-btn" id="cL2v2Minus" aria-label="初中級2v2を減らす">−</button>
-              <div class="court-num"><span id="cL2v2Num">0</span><small>面</small></div>
-              <button class="stepper-btn" id="cL2v2Plus" aria-label="初中級2v2を増やす">+</button>
-            </div>
-          </div>
-          <div class="format-row">
-            <div class="format-tag tag3v3">3v3</div>
-            <div class="court-stepper">
-              <button class="stepper-btn" id="cL3v3Minus" aria-label="初中級3v3を減らす">−</button>
-              <div class="court-num"><span id="cL3v3Num">1</span><small>面</small></div>
-              <button class="stepper-btn" id="cL3v3Plus" aria-label="初中級3v3を増やす">+</button>
             </div>
           </div>
         </div>
@@ -668,26 +715,26 @@
 
   <!-- ===== Rules ===== -->
   <section class="page" id="page-rules">
-    <h2 class="rules-title">オトバド ルール</h2>
+    <h2 class="rules-title">ルール</h2>
     <p class="rules-subtitle">このアプリが組み合わせを作るときに使っているルールです。</p>
 
     <div class="rule-block">
       <h3>1. コート構成</h3>
       <p>各ラウンドのコートは <strong>1v1 / 2v2 / 3v3</strong> から自由に選べ、1ラウンド内で混在可。</p>
-      <p>「<strong class="rule-star">★ 上級コート</strong>」と「初中級コート」を別々に設定でき、それぞれの形式・面数を独立に決められます。</p>
+      <p>「ランダムコート」と「<strong class="rule-star">★ 上級コート</strong>」を別々に設定でき、それぞれの形式・面数を独立に決められます。</p>
     </div>
 
     <div class="rule-block">
       <h3>2. 実力レベル</h3>
-      <p>各プレイヤーには <span class="rule-star">★</span>(上級)または <span class="rule-empty-star">☆</span>(初中級)を付けます。プレイヤー一覧で名前の右にあるボタンをタップで切替。デフォルトは <strong>初中級(☆)</strong>。</p>
+      <p>各プレイヤーには <span class="rule-star">★</span>(上級)または <span class="rule-empty-star">☆</span>(ランダム)を付けます。プレイヤー一覧で名前の右にあるボタンをタップで切替。デフォルトは <strong>ランダム(☆)</strong>。</p>
     </div>
 
     <div class="rule-block">
       <h3>3. 上級プレイヤーの「あぶれ」ルール</h3>
       <ul>
         <li>上級プレイヤーは <strong>上級コートを優先</strong>して埋める。</li>
-        <li>上級コートに入りきれなかった人は <strong>初中級コートに入って出場できる</strong>(あぶれ救済)。</li>
-        <li>逆に初中級プレイヤーが上級コートに入ることは <strong>不可</strong>。</li>
+        <li>上級コートに入りきれなかった人は <strong>ランダムコートに入って出場できる</strong>(あぶれ救済)。</li>
+        <li>逆にランダムプレイヤーが上級コートに入ることは <strong>不可</strong>。</li>
       </ul>
     </div>
 
@@ -707,7 +754,18 @@
     </div>
 
     <div class="rule-block">
-      <h3>6. プレイヤー管理</h3>
+      <h3>6. NG ペア(組ませない設定)</h3>
+      <ul>
+        <li>「この人とこの人は組ませたくない」というペアを <strong>双方向</strong>に登録できる。</li>
+        <li>登録方法: プレイヤー一覧上部の「編集」をタップ → 各行の <code>NG</code> ボタンから対象を選択。</li>
+        <li><strong>同じチーム</strong>には基本的に組まれなくなる(対戦相手としては普通にマッチする)。</li>
+        <li>大きなペナルティで抑制する <strong>ソフトNG方式</strong>。どうしても他の組み方が無いときだけ、最小限の違反で組まれる(組合せ不能エラーにはならない)。</li>
+        <li>プレイヤーを削除すると、そのIDは他の人のNGリストからも自動的に外れる。</li>
+      </ul>
+    </div>
+
+    <div class="rule-block">
+      <h3>7. プレイヤー管理</h3>
       <ul>
         <li><strong>休む(出場しない)</strong>: 名前左の <code>○/✓</code> 丸印をタップ。試合数とペア履歴は保持される。</li>
         <li><strong>削除</strong>: プレイヤー一覧上部の「編集」ボタンで編集モードに入ると <code>✕</code> が出現。削除すると履歴が完全に消えるので、休むだけなら丸印を使うこと。</li>
@@ -716,7 +774,7 @@
     </div>
 
     <div class="rule-block">
-      <h3>7. 結果の共有・ダウンロード</h3>
+      <h3>8. 結果の共有・ダウンロード</h3>
       <p>右上の <code>⋯</code> メニューから:</p>
       <ul>
         <li><strong>結果を共有</strong>: スマホは LINE などの共有シート、PC はクリップボードにコピー</li>
@@ -726,11 +784,21 @@
     </div>
 
     <div class="rule-block">
-      <h3>8. データの保存</h3>
+      <h3>9. データの保存</h3>
       <p>すべてブラウザの <strong>localStorage</strong> に保存されます。サーバーへの送信は一切なし。デバイス内で完結。</p>
       <p>同じ端末・ブラウザでアクセスすれば履歴が引き継がれますが、別端末や別ブラウザでは別データになります。</p>
     </div>
   </section>
+</div>
+
+<!-- NG sheet -->
+<div class="sheet-bg" id="ngSheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="ng-sheet-title" id="ngSheetTitle"></div>
+    <div class="ng-sheet-list" id="ngSheetList"></div>
+    <button class="sheet-btn cancel" id="closeNgSheetBtn">閉じる</button>
+  </div>
 </div>
 
 <!-- Menu sheet -->
@@ -835,6 +903,10 @@ function load() {
     }
     // Default skill = lower for legacy player records
     state.players.forEach(p => { if (p.skill !== SKILL_UPPER) p.skill = SKILL_LOWER; });
+    // Initialize skipCount for legacy player records
+    state.players.forEach(p => { if (typeof p.skipCount !== "number") p.skipCount = 0; });
+    // Initialize blacklist for legacy player records
+    state.players.forEach(p => { if (!Array.isArray(p.blacklist)) p.blacklist = []; });
     if (Array.isArray(parsed.rounds)) {
       state.rounds = parsed.rounds.map(r => ({
         roundNumber: r.roundNumber,
@@ -899,9 +971,9 @@ function canGenerate() {
   const lowerActive = activeBySkill(SKILL_LOWER).length;
   const upperNeed  = neededForSkill(SKILL_UPPER);
   const lowerNeed  = neededForSkill(SKILL_LOWER);
-  // 上級コートは上級プレイヤーだけで埋める必要がある(初中級は上に上げない)
+  // 上級コートは上級プレイヤーだけで埋める必要がある(ランダムは上に上げない)
   if (upperActive < upperNeed) return false;
-  // 上級コートで余った上級プレイヤーは初中級コートに合流できる
+  // 上級コートで余った上級プレイヤーはランダムコートに合流できる
   const upperOverflow = upperActive - upperNeed;
   return (lowerActive + upperOverflow) >= lowerNeed;
 }
@@ -922,11 +994,18 @@ function combinations(n, k) {
 function addPlayer(name) {
   const trimmed = name.trim();
   if (!trimmed) return;
+  // 既存のアクティブプレイヤーの最小優先度に合わせて join — 既存の「次に出る人」と同列に並ぶ
+  const activeNow = state.players.filter(p => p.isActive);
+  const minPriority = activeNow.length > 0
+    ? Math.min(...activeNow.map(p => p.gamesPlayed + (p.skipCount || 0)))
+    : 0;
   state.players.push({
     id: uid(), name: trimmed, isActive: true,
     skill: SKILL_LOWER,
     gamesPlayed: 0,
+    skipCount: minPriority,
     gamesByFormat: { "1v1": 0, "2v2": 0, "3v3": 0 },
+    blacklist: [],
   });
   save(); renderAll();
 }
@@ -938,7 +1017,30 @@ function toggleSkill(id) {
 }
 function removePlayer(id) {
   state.players = state.players.filter(p => p.id !== id);
+  state.players.forEach(p => {
+    if (Array.isArray(p.blacklist)) {
+      p.blacklist = p.blacklist.filter(x => x !== id);
+    }
+  });
   save(); renderAll();
+}
+// NG 設定 (双方向)
+function toggleBlacklist(idA, idB) {
+  if (idA === idB) return;
+  const a = state.players.find(p => p.id === idA);
+  const b = state.players.find(p => p.id === idB);
+  if (!a || !b) return;
+  if (!Array.isArray(a.blacklist)) a.blacklist = [];
+  if (!Array.isArray(b.blacklist)) b.blacklist = [];
+  const has = a.blacklist.includes(idB);
+  if (has) {
+    a.blacklist = a.blacklist.filter(x => x !== idB);
+    b.blacklist = b.blacklist.filter(x => x !== idA);
+  } else {
+    a.blacklist.push(idB);
+    b.blacklist.push(idA);
+  }
+  save();
 }
 function toggleActive(id) {
   const p = state.players.find(p => p.id === id);
@@ -947,6 +1049,7 @@ function toggleActive(id) {
 function resetGames() {
   state.players.forEach(p => {
     p.gamesPlayed = 0;
+    p.skipCount = 0;
     p.gamesByFormat = { "1v1": 0, "2v2": 0, "3v3": 0 };
   });
   state.rounds = [];
@@ -1087,7 +1190,19 @@ function buildPairHistory() {
       }
     });
   });
-  return { teammate, opponent, sameCourtLast };
+  // NG 一覧(双方向)を Map<id, Set<id>> として添付
+  const ng = new Map();
+  state.players.forEach(p => {
+    if (Array.isArray(p.blacklist) && p.blacklist.length > 0) {
+      ng.set(p.id, new Set(p.blacklist));
+    }
+  });
+  return { teammate, opponent, sameCourtLast, ng };
+}
+const NG_WEIGHT = 1e6;
+function isNGPair(hist, a, b) {
+  const sa = hist.ng && hist.ng.get(a);
+  return sa ? sa.has(b) : false;
 }
 
 // 4人または6人をA/Bに最適分割。team sizeはplayers.length/2で決まる。
@@ -1122,8 +1237,10 @@ function bestSplit(players, hist) {
       for (let j = i + 1; j < teamSize; j++) {
         score += sq(get(hist.teammate, teamA[i].id, teamA[j].id)) * 3;
         score += cooldownPenalty(hist, teamA[i].id, teamA[j].id);
+        if (isNGPair(hist, teamA[i].id, teamA[j].id)) score += NG_WEIGHT;
         score += sq(get(hist.teammate, teamB[i].id, teamB[j].id)) * 3;
         score += cooldownPenalty(hist, teamB[i].id, teamB[j].id);
+        if (isNGPair(hist, teamB[i].id, teamB[j].id)) score += NG_WEIGHT;
       }
     for (let i = 0; i < teamSize; i++)
       for (let j = 0; j < teamSize; j++) {
@@ -1145,7 +1262,11 @@ function assignToCourts(playing, courtSpecs, hist, gbf) {
   let bestTotal = Infinity;
   const trials = courtSpecs.length === 1 ? 1 : 500;
   for (let t = 0; t < trials; t++) {
-    const shuffled = [...playing].sort(() => Math.random() - 0.5);
+    const shuffled = [...playing];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
     let total = 0;
     const matches = [];
     let cursor = 0;
@@ -1188,10 +1309,18 @@ function generateNextRound() {
   const hist = buildPairHistory();
   const gbf = new Map(state.players.map(p => [p.id, p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }]));
 
-  const sortByGames = arr => [...arr].sort((a, b) => {
-    if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
-    return Math.random() - 0.5;
-  });
+  // 休み(チェック外し)は内部スコアに含めて、復帰時に優先選出されないようにする
+  const priority = p => p.gamesPlayed + (p.skipCount || 0);
+  // タイブレークは事前に振ったランダムキーで決定的にソート(Math.random() - 0.5 を比較関数にすると偏る)
+  const sortByGames = arr => {
+    const keyed = arr.map(p => ({ p, r: Math.random() }));
+    keyed.sort((a, b) => {
+      const pa = priority(a.p), pb = priority(b.p);
+      if (pa !== pb) return pa - pb;
+      return a.r - b.r;
+    });
+    return keyed.map(x => x.p);
+  };
 
   const upperActive = activeBySkill(SKILL_UPPER);
   const lowerActive = activeBySkill(SKILL_LOWER);
@@ -1201,9 +1330,9 @@ function generateNextRound() {
   // 上級コートは上級プレイヤーだけで埋める。試合数が少ない順に優先。
   const upperSorted   = sortByGames(upperActive);
   const upperPlaying  = upperSorted.slice(0, upperNeed);
-  const upperOverflow = upperSorted.slice(upperNeed);   // 上級にあぶれた人 → 初中級コートへ流れる
+  const upperOverflow = upperSorted.slice(upperNeed);   // 上級にあぶれた人 → ランダムコートへ流れる
 
-  // 初中級コートは「初中級プレイヤー + 上級にあぶれた人」のプールから選ぶ。
+  // ランダムコートは「ランダムプレイヤー + 上級にあぶれた人」のプールから選ぶ。
   const lowerPool     = sortByGames([...lowerActive, ...upperOverflow]);
   const lowerPlaying  = lowerPool.slice(0, lowerNeed);
   const lowerResting  = lowerPool.slice(lowerNeed);
@@ -1220,15 +1349,23 @@ function generateNextRound() {
 
   const allMatches = [];
   let courtNo = 1;
-  upperMatches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_UPPER }));
   lowerMatches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_LOWER }));
+  upperMatches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_UPPER }));
 
   const allPlaying = [...upperPlaying, ...lowerPlaying];
-  const allResting = lowerResting; // 上級にあぶれて初中級にも入らなかった分はここに含まれている
+  const allResting = lowerResting; // 上級にあぶれてランダムにも入らなかった分はここに含まれている
 
   allPlaying.forEach(p => {
     const found = state.players.find(x => x.id === p.id);
     if (found) found.gamesPlayed += 1;
+  });
+  // 休み(チェック外し)のプレイヤーは skipCount を +1(表示の gamesPlayed は触らない)
+  const inactiveCounted = [];
+  state.players.forEach(p => {
+    if (!p.isActive) {
+      p.skipCount = (p.skipCount || 0) + 1;
+      inactiveCounted.push(p.id);
+    }
   });
   allMatches.forEach(m => {
     [...m.teamA, ...m.teamB].forEach(ref => {
@@ -1243,6 +1380,7 @@ function generateNextRound() {
     roundNumber: state.rounds.length + 1,
     matches: allMatches,
     resting: allResting.map(p => ({ id: p.id, name: p.name })),
+    inactiveCounted,
     timestamp: Date.now(),
   });
 
@@ -1261,6 +1399,11 @@ function undoLastRound() {
         p.gamesByFormat[m.format]--;
       }
     });
+  });
+  // 休みカウントも巻き戻す
+  (last.inactiveCounted || []).forEach(id => {
+    const p = state.players.find(x => x.id === id);
+    if (p) p.skipCount = Math.max(0, (p.skipCount || 0) - 1);
   });
   state.rounds.shift();
   save(); renderAll();
@@ -1283,11 +1426,14 @@ function renderPlayers() {
     const li = document.createElement("li");
     li.className = "player-item" + (p.isActive ? "" : " inactive");
     const isUpper = (p.skill || SKILL_LOWER) === SKILL_UPPER;
+    const ngCount = Array.isArray(p.blacklist) ? p.blacklist.length : 0;
     li.innerHTML = `
       <button class="check ${p.isActive ? "on" : ""}" data-action="toggle" data-id="${p.id}" aria-label="出場切替"></button>
       <div class="player-name"></div>
+      ${ngCount > 0 && !editMode ? `<span class="ng-mark" title="NG設定あり">NG${ngCount}</span>` : ""}
       <button class="skill-btn ${isUpper ? "upper" : ""}" data-action="skill" data-id="${p.id}" aria-label="上級切替">${isUpper ? "★" : "☆"}</button>
       <span class="games-badge">${p.gamesPlayed} 試合</span>
+      ${editMode ? `<button class="ng-btn ${ngCount > 0 ? "has" : ""}" data-action="ng" data-id="${p.id}" aria-label="NG設定">NG${ngCount > 0 ? ngCount : ""}</button>` : ""}
       ${editMode ? `<button class="delete-btn" data-action="del" data-id="${p.id}" aria-label="削除">✕</button>` : ""}
     `;
     li.querySelector(".player-name").textContent = p.name;
@@ -1334,22 +1480,22 @@ function renderMatchPage() {
     summary.classList.add("warn");
   } else if (!fits) {
     const parts = [];
+    if (!lowerOK) parts.push(`ランダム: あと${lowerNeed - lowerPool}名`);
     if (!upperOK) parts.push(`上級: あと${upperNeed - upperActive}名`);
-    if (!lowerOK) parts.push(`初中級: あと${lowerNeed - lowerPool}名`);
     summary.textContent = parts.join(" / ");
     summary.classList.add("warn");
   } else {
     const parts = [];
-    if (upperNeed > 0) parts.push(`上級 ${upperNeed}名`);
     if (lowerNeed > 0) {
-      // 上級から初中級へ流入する人数(必要分のみ)
+      // 上級からランダムへ流入する人数(必要分のみ)
       const upperToLower = Math.max(0, lowerNeed - lowerActive);
       if (upperToLower > 0) {
-        parts.push(`初中級 ${lowerNeed}名(うち上級から ${upperToLower}名)`);
+        parts.push(`ランダム ${lowerNeed}名(うち上級から ${upperToLower}名)`);
       } else {
-        parts.push(`初中級 ${lowerNeed}名`);
+        parts.push(`ランダム ${lowerNeed}名`);
       }
     }
+    if (upperNeed > 0) parts.push(`上級 ${upperNeed}名`);
     summary.textContent = `合計 ${total} 面 / ${parts.join(" + ")}`;
   }
 
@@ -1473,6 +1619,7 @@ document.getElementById("playerList").addEventListener("click", e => {
   const id = btn.dataset.id;
   if (btn.dataset.action === "toggle") toggleActive(id);
   if (btn.dataset.action === "skill") toggleSkill(id);
+  if (btn.dataset.action === "ng") openNgSheet(id);
   if (btn.dataset.action === "del") {
     const p = state.players.find(x => x.id === id);
     const name = p ? p.name : "";
@@ -1528,6 +1675,49 @@ document.getElementById("undoBtn").addEventListener("click", () => {
   if (confirm("直前のラウンドを取り消しますか?(試合カウントも戻ります)")) {
     undoLastRound();
   }
+});
+
+// NG sheet
+let ngTargetId = null;
+function openNgSheet(id) {
+  ngTargetId = id;
+  renderNgSheet();
+  document.getElementById("ngSheet").classList.add("show");
+}
+function closeNgSheet() {
+  ngTargetId = null;
+  document.getElementById("ngSheet").classList.remove("show");
+}
+function renderNgSheet() {
+  const target = state.players.find(p => p.id === ngTargetId);
+  const titleEl = document.getElementById("ngSheetTitle");
+  const listEl = document.getElementById("ngSheetList");
+  if (!target) { titleEl.textContent = ""; listEl.innerHTML = ""; return; }
+  titleEl.textContent = `${target.name} と組ませない人を選択`;
+  listEl.innerHTML = "";
+  const others = state.players.filter(p => p.id !== target.id);
+  if (others.length === 0) {
+    listEl.innerHTML = `<div class="ng-sheet-empty">他にプレイヤーがいません</div>`;
+    return;
+  }
+  const tBl = Array.isArray(target.blacklist) ? target.blacklist : [];
+  others.forEach(o => {
+    const on = tBl.includes(o.id);
+    const row = document.createElement("div");
+    row.className = "ng-row" + (on ? " on" : "");
+    row.innerHTML = `<div class="name"></div><div class="toggle"></div>`;
+    row.querySelector(".name").textContent = o.name;
+    row.addEventListener("click", () => {
+      toggleBlacklist(target.id, o.id);
+      renderNgSheet();
+      renderPlayers();
+    });
+    listEl.appendChild(row);
+  });
+}
+document.getElementById("closeNgSheetBtn").addEventListener("click", closeNgSheet);
+document.getElementById("ngSheet").addEventListener("click", e => {
+  if (e.target.id === "ngSheet") closeNgSheet();
 });
 
 const sheet = document.getElementById("menuSheet");
