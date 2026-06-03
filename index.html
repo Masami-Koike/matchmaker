@@ -214,6 +214,22 @@
   }
   .ng-btn:active { background: rgba(247,37,133,0.15); color: var(--teamB); }
   .ng-btn.has { color: var(--teamB); background: rgba(247,37,133,0.10); }
+  .norest-btn {
+    width: auto; min-width: 32px; height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    color: var(--text-faint);
+    font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-2);
+  }
+  .norest-btn:active { background: rgba(46,194,126,0.15); color: var(--good); }
+  .norest-btn.on { color: var(--good); background: rgba(46,194,126,0.12); }
+  .norest-mark {
+    color: var(--good);
+    font-size: 11px; font-weight: 700;
+    margin-left: 6px;
+  }
   .ng-mark {
     color: var(--teamB);
     font-size: 11px; font-weight: 700;
@@ -754,7 +770,17 @@
     </div>
 
     <div class="rule-block">
-      <h3>6. NG ペア(組ませない設定)</h3>
+      <h3>6. 休みなし(常に出場)設定</h3>
+      <ul>
+        <li>特定のプレイヤーを「<strong>休みなし</strong>」に設定すると、出場プールに最優先で入る(基本的に休憩に回らない)。</li>
+        <li>登録方法: プレイヤー一覧上部の「編集」をタップ → 各行の <code>全出</code> ボタンで切替。設定中は名前の右に「全出」マークが付く。</li>
+        <li>休みなしの人数がコート定員より多い場合は、休みなしの中で <strong>試合数が少ない順</strong>に出場し、はみ出る人は休憩。</li>
+        <li>休みなし設定でも、自分でチェックを外して「休み」にすれば出場対象から除外される。</li>
+      </ul>
+    </div>
+
+    <div class="rule-block">
+      <h3>7. NG ペア(組ませない設定)</h3>
       <ul>
         <li>「この人とこの人は組ませたくない」というペアを <strong>双方向</strong>に登録できる。</li>
         <li>登録方法: プレイヤー一覧上部の「編集」をタップ → 各行の <code>NG</code> ボタンから対象を選択。</li>
@@ -765,7 +791,7 @@
     </div>
 
     <div class="rule-block">
-      <h3>7. プレイヤー管理</h3>
+      <h3>8. プレイヤー管理</h3>
       <ul>
         <li><strong>休む(出場しない)</strong>: 名前左の <code>○/✓</code> 丸印をタップ。試合数とペア履歴は保持される。</li>
         <li><strong>削除</strong>: プレイヤー一覧上部の「編集」ボタンで編集モードに入ると <code>✕</code> が出現。削除すると履歴が完全に消えるので、休むだけなら丸印を使うこと。</li>
@@ -774,7 +800,7 @@
     </div>
 
     <div class="rule-block">
-      <h3>8. 結果の共有・ダウンロード</h3>
+      <h3>9. 結果の共有・ダウンロード</h3>
       <p>右上の <code>⋯</code> メニューから:</p>
       <ul>
         <li><strong>結果を共有</strong>: スマホは LINE などの共有シート、PC はクリップボードにコピー</li>
@@ -784,7 +810,7 @@
     </div>
 
     <div class="rule-block">
-      <h3>9. データの保存</h3>
+      <h3>10. データの保存</h3>
       <p>すべてブラウザの <strong>localStorage</strong> に保存されます。サーバーへの送信は一切なし。デバイス内で完結。</p>
       <p>同じ端末・ブラウザでアクセスすれば履歴が引き継がれますが、別端末や別ブラウザでは別データになります。</p>
     </div>
@@ -907,6 +933,8 @@ function load() {
     state.players.forEach(p => { if (typeof p.skipCount !== "number") p.skipCount = 0; });
     // Initialize blacklist for legacy player records
     state.players.forEach(p => { if (!Array.isArray(p.blacklist)) p.blacklist = []; });
+    // Initialize neverRest for legacy player records
+    state.players.forEach(p => { if (typeof p.neverRest !== "boolean") p.neverRest = false; });
     if (Array.isArray(parsed.rounds)) {
       state.rounds = parsed.rounds.map(r => ({
         roundNumber: r.roundNumber,
@@ -1006,6 +1034,7 @@ function addPlayer(name) {
     skipCount: minPriority,
     gamesByFormat: { "1v1": 0, "2v2": 0, "3v3": 0 },
     blacklist: [],
+    neverRest: false,
   });
   save(); renderAll();
 }
@@ -1013,6 +1042,12 @@ function toggleSkill(id) {
   const p = state.players.find(x => x.id === id);
   if (!p) return;
   p.skill = (p.skill === SKILL_UPPER) ? SKILL_LOWER : SKILL_UPPER;
+  save(); renderAll();
+}
+function toggleNeverRest(id) {
+  const p = state.players.find(x => x.id === id);
+  if (!p) return;
+  p.neverRest = !p.neverRest;
   save(); renderAll();
 }
 function removePlayer(id) {
@@ -1311,10 +1346,13 @@ function generateNextRound() {
 
   // 休み(チェック外し)は内部スコアに含めて、復帰時に優先選出されないようにする
   const priority = p => p.gamesPlayed + (p.skipCount || 0);
-  // タイブレークは事前に振ったランダムキーで決定的にソート(Math.random() - 0.5 を比較関数にすると偏る)
+  // 休みなし(neverRest=true)は常に出場プールへ。タイブレークは事前のランダムキーで決定的にソート。
   const sortByGames = arr => {
     const keyed = arr.map(p => ({ p, r: Math.random() }));
     keyed.sort((a, b) => {
+      const na = a.p.neverRest ? 1 : 0;
+      const nb = b.p.neverRest ? 1 : 0;
+      if (na !== nb) return nb - na; // neverRest を先頭に
       const pa = priority(a.p), pb = priority(b.p);
       if (pa !== pb) return pa - pb;
       return a.r - b.r;
@@ -1427,12 +1465,15 @@ function renderPlayers() {
     li.className = "player-item" + (p.isActive ? "" : " inactive");
     const isUpper = (p.skill || SKILL_LOWER) === SKILL_UPPER;
     const ngCount = Array.isArray(p.blacklist) ? p.blacklist.length : 0;
+    const noRest = !!p.neverRest;
     li.innerHTML = `
       <button class="check ${p.isActive ? "on" : ""}" data-action="toggle" data-id="${p.id}" aria-label="出場切替"></button>
       <div class="player-name"></div>
+      ${noRest && !editMode ? `<span class="norest-mark" title="休みなし">全出</span>` : ""}
       ${ngCount > 0 && !editMode ? `<span class="ng-mark" title="NG設定あり">NG${ngCount}</span>` : ""}
       <button class="skill-btn ${isUpper ? "upper" : ""}" data-action="skill" data-id="${p.id}" aria-label="上級切替">${isUpper ? "★" : "☆"}</button>
       <span class="games-badge">${p.gamesPlayed} 試合</span>
+      ${editMode ? `<button class="norest-btn ${noRest ? "on" : ""}" data-action="norest" data-id="${p.id}" aria-label="休みなし切替">全出</button>` : ""}
       ${editMode ? `<button class="ng-btn ${ngCount > 0 ? "has" : ""}" data-action="ng" data-id="${p.id}" aria-label="NG設定">NG${ngCount > 0 ? ngCount : ""}</button>` : ""}
       ${editMode ? `<button class="delete-btn" data-action="del" data-id="${p.id}" aria-label="削除">✕</button>` : ""}
     `;
@@ -1619,6 +1660,7 @@ document.getElementById("playerList").addEventListener("click", e => {
   const id = btn.dataset.id;
   if (btn.dataset.action === "toggle") toggleActive(id);
   if (btn.dataset.action === "skill") toggleSkill(id);
+  if (btn.dataset.action === "norest") toggleNeverRest(id);
   if (btn.dataset.action === "ng") openNgSheet(id);
   if (btn.dataset.action === "del") {
     const p = state.players.find(x => x.id === id);
