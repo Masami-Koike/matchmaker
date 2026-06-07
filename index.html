@@ -749,6 +749,7 @@
       <h3>3. 上級プレイヤーの「あぶれ」ルール</h3>
       <ul>
         <li>上級プレイヤーは <strong>上級コートを優先</strong>して埋める。</li>
+        <li>上級コート席は「<strong>上級コート出場回数が少ない人</strong>」順に選出 → 特定の人だけが上級に偏らないよう均等化。</li>
         <li>上級コートに入りきれなかった人は <strong>ランダムコートに入って出場できる</strong>(あぶれ救済)。</li>
         <li>逆にランダムプレイヤーが上級コートに入ることは <strong>不可</strong>。</li>
       </ul>
@@ -1346,6 +1347,20 @@ function generateNextRound() {
 
   // 休み(チェック外し)は内部スコアに含めて、復帰時に優先選出されないようにする
   const priority = p => p.gamesPlayed + (p.skipCount || 0);
+
+  // 上級コート出場回数を履歴から集計(上級コート席の取り合いを均等化する)
+  const upperGames = new Map();
+  state.players.forEach(p => upperGames.set(p.id, 0));
+  state.rounds.forEach(r => {
+    r.matches.forEach(m => {
+      if (m.skill === SKILL_UPPER) {
+        [...m.teamA, ...m.teamB].forEach(ref => {
+          upperGames.set(ref.id, (upperGames.get(ref.id) || 0) + 1);
+        });
+      }
+    });
+  });
+
   // 休みなし(neverRest=true)は常に出場プールへ。タイブレークは事前のランダムキーで決定的にソート。
   const sortByGames = arr => {
     const keyed = arr.map(p => ({ p, r: Math.random() }));
@@ -1359,14 +1374,30 @@ function generateNextRound() {
     });
     return keyed.map(x => x.p);
   };
+  // 上級コート専用ソート: 上級コート出場が少ない人を最優先(同数は総試合数 → ランダム)
+  const sortForUpper = arr => {
+    const keyed = arr.map(p => ({ p, r: Math.random() }));
+    keyed.sort((a, b) => {
+      const na = a.p.neverRest ? 1 : 0;
+      const nb = b.p.neverRest ? 1 : 0;
+      if (na !== nb) return nb - na;
+      const ua = upperGames.get(a.p.id) || 0;
+      const ub = upperGames.get(b.p.id) || 0;
+      if (ua !== ub) return ua - ub;
+      const pa = priority(a.p), pb = priority(b.p);
+      if (pa !== pb) return pa - pb;
+      return a.r - b.r;
+    });
+    return keyed.map(x => x.p);
+  };
 
   const upperActive = activeBySkill(SKILL_UPPER);
   const lowerActive = activeBySkill(SKILL_LOWER);
   const upperNeed   = neededForSkill(SKILL_UPPER);
   const lowerNeed   = neededForSkill(SKILL_LOWER);
 
-  // 上級コートは上級プレイヤーだけで埋める。試合数が少ない順に優先。
-  const upperSorted   = sortByGames(upperActive);
+  // 上級コートは上級プレイヤーだけで埋める。上級コート出場回数が少ない順に優先。
+  const upperSorted   = sortForUpper(upperActive);
   const upperPlaying  = upperSorted.slice(0, upperNeed);
   const upperOverflow = upperSorted.slice(upperNeed);   // 上級にあぶれた人 → ランダムコートへ流れる
 
