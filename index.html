@@ -230,6 +230,22 @@
     font-size: 11px; font-weight: 700;
     margin-left: 6px;
   }
+  .prefer3-btn {
+    width: auto; min-width: 32px; height: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    color: var(--text-faint);
+    font-size: 11px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-2);
+  }
+  .prefer3-btn:active { background: rgba(76,201,240,0.15); color: var(--teamA); }
+  .prefer3-btn.on { color: var(--teamA); background: rgba(76,201,240,0.12); }
+  .prefer3-mark {
+    color: var(--teamA);
+    font-size: 11px; font-weight: 700;
+    margin-left: 6px;
+  }
   .ng-mark {
     color: var(--teamB);
     font-size: 11px; font-weight: 700;
@@ -380,7 +396,17 @@
     margin: 8px 0 12px;
   }
   .round-title { font-size: 18px; font-weight: 800; }
-  .round-meta { color: var(--text-faint); font-size: 13px; }
+  .round-meta { color: var(--text-faint); font-size: 13px; display: flex; align-items: center; gap: 10px; }
+  .shuffle-btn {
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 0.1s;
+  }
+  .shuffle-btn:active { background: var(--accent-soft); color: var(--accent); }
 
   .court-block {
     background: var(--surface);
@@ -771,7 +797,17 @@
     </div>
 
     <div class="rule-block">
-      <h3>6. 休みなし(常に出場)設定</h3>
+      <h3>6. 3v3 優先設定(コートが余ったときに 3v3 に入れる)</h3>
+      <ul>
+        <li>人数が多くて 3v3 コートが存在するとき、「<strong>3v3 優先</strong>」設定の人を 3v3 コートに優先的に配置する。</li>
+        <li>登録方法: プレイヤー一覧上部の「編集」をタップ → 各行の <code>3v3</code> ボタンで切替。設定中は名前の右に「3v3」マークが付く。</li>
+        <li>ソフトな優先付け(大きな減点)。3v3 優先の人数が 3v3 席より多い場合、はみ出た人は他のコート(2v2 等)に入る。</li>
+        <li>3v3 コートが無いラウンド(2v2 だけの構成)では <strong>影響なし</strong>。</li>
+      </ul>
+    </div>
+
+    <div class="rule-block">
+      <h3>7. 休みなし(常に出場)設定</h3>
       <ul>
         <li>特定のプレイヤーを「<strong>休みなし</strong>」に設定すると、出場プールに最優先で入る(基本的に休憩に回らない)。</li>
         <li>登録方法: プレイヤー一覧上部の「編集」をタップ → 各行の <code>全出</code> ボタンで切替。設定中は名前の右に「全出」マークが付く。</li>
@@ -781,7 +817,7 @@
     </div>
 
     <div class="rule-block">
-      <h3>7. NG ペア(組ませない設定)</h3>
+      <h3>8. NG ペア(組ませない設定)</h3>
       <ul>
         <li>「この人とこの人は組ませたくない」というペアを <strong>双方向</strong>に登録できる。</li>
         <li>登録方法: プレイヤー一覧上部の「編集」をタップ → 各行の <code>NG</code> ボタンから対象を選択。</li>
@@ -792,7 +828,7 @@
     </div>
 
     <div class="rule-block">
-      <h3>8. プレイヤー管理</h3>
+      <h3>9. プレイヤー管理</h3>
       <ul>
         <li><strong>休む(出場しない)</strong>: 名前左の <code>○/✓</code> 丸印をタップ。試合数とペア履歴は保持される。</li>
         <li><strong>削除</strong>: プレイヤー一覧上部の「編集」ボタンで編集モードに入ると <code>✕</code> が出現。削除すると履歴が完全に消えるので、休むだけなら丸印を使うこと。</li>
@@ -801,7 +837,7 @@
     </div>
 
     <div class="rule-block">
-      <h3>9. 結果の共有・ダウンロード</h3>
+      <h3>10. 結果の共有・ダウンロード</h3>
       <p>右上の <code>⋯</code> メニューから:</p>
       <ul>
         <li><strong>結果を共有</strong>: スマホは LINE などの共有シート、PC はクリップボードにコピー</li>
@@ -811,7 +847,7 @@
     </div>
 
     <div class="rule-block">
-      <h3>10. データの保存</h3>
+      <h3>11. データの保存</h3>
       <p>すべてブラウザの <strong>localStorage</strong> に保存されます。サーバーへの送信は一切なし。デバイス内で完結。</p>
       <p>同じ端末・ブラウザでアクセスすれば履歴が引き継がれますが、別端末や別ブラウザでは別データになります。</p>
     </div>
@@ -936,6 +972,8 @@ function load() {
     state.players.forEach(p => { if (!Array.isArray(p.blacklist)) p.blacklist = []; });
     // Initialize neverRest for legacy player records
     state.players.forEach(p => { if (typeof p.neverRest !== "boolean") p.neverRest = false; });
+    // Initialize prefer3v3 for legacy player records
+    state.players.forEach(p => { if (typeof p.prefer3v3 !== "boolean") p.prefer3v3 = false; });
     if (Array.isArray(parsed.rounds)) {
       state.rounds = parsed.rounds.map(r => ({
         roundNumber: r.roundNumber,
@@ -1036,6 +1074,7 @@ function addPlayer(name) {
     gamesByFormat: { "1v1": 0, "2v2": 0, "3v3": 0 },
     blacklist: [],
     neverRest: false,
+    prefer3v3: false,
   });
   save(); renderAll();
 }
@@ -1049,6 +1088,12 @@ function toggleNeverRest(id) {
   const p = state.players.find(x => x.id === id);
   if (!p) return;
   p.neverRest = !p.neverRest;
+  save(); renderAll();
+}
+function togglePrefer3v3(id) {
+  const p = state.players.find(x => x.id === id);
+  if (!p) return;
+  p.prefer3v3 = !p.prefer3v3;
   save(); renderAll();
 }
 function removePlayer(id) {
@@ -1233,9 +1278,13 @@ function buildPairHistory() {
       ng.set(p.id, new Set(p.blacklist));
     }
   });
-  return { teammate, opponent, sameCourtLast, ng };
+  // 3v3 優先プレイヤーの ID セットを添付
+  const prefer3v3 = new Set();
+  state.players.forEach(p => { if (p.prefer3v3) prefer3v3.add(p.id); });
+  return { teammate, opponent, sameCourtLast, ng, prefer3v3 };
 }
 const NG_WEIGHT = 1e6;
+const PREFER_3V3_WEIGHT = 1000;
 function isNGPair(hist, a, b) {
   const sa = hist.ng && hist.ng.get(a);
   return sa ? sa.has(b) : false;
@@ -1316,6 +1365,10 @@ function assignToCourts(playing, courtSpecs, hist, gbf) {
         const counts = gbf && gbf.get(p.id);
         const cnt = (counts && counts[fmt]) || 0;
         total += sq(cnt) * 2;
+        // 3v3 優先プレイヤーが 3v3 以外に置かれた場合の強いペナルティ(ソフトなので絶対ではない)
+        if (fmt !== "3v3" && hist.prefer3v3 && hist.prefer3v3.has(p.id)) {
+          total += PREFER_3V3_WEIGHT;
+        }
       });
       const split = bestSplit(group, hist);
       total += split.score;
@@ -1456,6 +1509,59 @@ function generateNextRound() {
   save(); renderAll();
 }
 
+function shuffleLatestRound() {
+  if (state.rounds.length === 0) return;
+  const last = state.rounds[0];
+  if (!last.matches || last.matches.length === 0) return;
+
+  // 現在のラウンドを履歴から一旦外して hist を構築(自分自身は履歴に含めない)
+  const saved = state.rounds.shift();
+  const hist = buildPairHistory();
+  state.rounds.unshift(saved);
+
+  // 現在のラウンドぶんを除いた gamesByFormat を作る
+  const gbf = new Map(state.players.map(p => [p.id, { ...(p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }) }]));
+  last.matches.forEach(m => {
+    [...m.teamA, ...m.teamB].forEach(ref => {
+      const counts = gbf.get(ref.id);
+      if (counts) counts[m.format] = Math.max(0, (counts[m.format] || 0) - 1);
+    });
+  });
+
+  const upperMatches = last.matches.filter(m => m.skill === SKILL_UPPER);
+  const lowerMatches = last.matches.filter(m => m.skill === SKILL_LOWER);
+  const upperPlaying = upperMatches.flatMap(m => [...m.teamA, ...m.teamB]);
+  const lowerPlaying = lowerMatches.flatMap(m => [...m.teamA, ...m.teamB]);
+  const upperSpecs = upperMatches.map(m => ({ format: m.format }));
+  const lowerSpecs = lowerMatches.map(m => ({ format: m.format }));
+
+  const newUpper = upperSpecs.length > 0
+    ? assignToCourts(upperPlaying.map(p => ({ id: p.id, name: p.name })), upperSpecs, hist, gbf)
+    : [];
+  const newLower = lowerSpecs.length > 0
+    ? assignToCourts(lowerPlaying.map(p => ({ id: p.id, name: p.name })), lowerSpecs, hist, gbf)
+    : [];
+
+  const allMatches = [];
+  let courtNo = 1;
+  newLower.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_LOWER }));
+  newUpper.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_UPPER }));
+  last.matches = allMatches;
+
+  // 形式が変わる可能性があるので gamesByFormat を全件再計算
+  state.players.forEach(p => { p.gamesByFormat = { "1v1": 0, "2v2": 0, "3v3": 0 }; });
+  state.rounds.forEach(r => {
+    r.matches.forEach(m => {
+      [...m.teamA, ...m.teamB].forEach(ref => {
+        const p = state.players.find(x => x.id === ref.id);
+        if (p) p.gamesByFormat[m.format] = (p.gamesByFormat[m.format] || 0) + 1;
+      });
+    });
+  });
+
+  save(); renderAll();
+}
+
 function undoLastRound() {
   if (state.rounds.length === 0) return;
   const last = state.rounds[0];
@@ -1497,13 +1603,16 @@ function renderPlayers() {
     const isUpper = (p.skill || SKILL_LOWER) === SKILL_UPPER;
     const ngCount = Array.isArray(p.blacklist) ? p.blacklist.length : 0;
     const noRest = !!p.neverRest;
+    const prefer3 = !!p.prefer3v3;
     li.innerHTML = `
       <button class="check ${p.isActive ? "on" : ""}" data-action="toggle" data-id="${p.id}" aria-label="出場切替"></button>
       <div class="player-name"></div>
+      ${prefer3 && !editMode ? `<span class="prefer3-mark" title="3v3優先">3v3</span>` : ""}
       ${noRest && !editMode ? `<span class="norest-mark" title="休みなし">全出</span>` : ""}
       ${ngCount > 0 && !editMode ? `<span class="ng-mark" title="NG設定あり">NG${ngCount}</span>` : ""}
       <button class="skill-btn ${isUpper ? "upper" : ""}" data-action="skill" data-id="${p.id}" aria-label="上級切替">${isUpper ? "★" : "☆"}</button>
       <span class="games-badge">${p.gamesPlayed} 試合</span>
+      ${editMode ? `<button class="prefer3-btn ${prefer3 ? "on" : ""}" data-action="prefer3" data-id="${p.id}" aria-label="3v3優先切替">3v3</button>` : ""}
       ${editMode ? `<button class="norest-btn ${noRest ? "on" : ""}" data-action="norest" data-id="${p.id}" aria-label="休みなし切替">全出</button>` : ""}
       ${editMode ? `<button class="ng-btn ${ngCount > 0 ? "has" : ""}" data-action="ng" data-id="${p.id}" aria-label="NG設定">NG${ngCount > 0 ? ngCount : ""}</button>` : ""}
       ${editMode ? `<button class="delete-btn" data-action="del" data-id="${p.id}" aria-label="削除">✕</button>` : ""}
@@ -1582,7 +1691,10 @@ function renderRoundHTML(round, isLatest) {
     <div class="${isLatest ? "" : "history-round"}">
       <div class="round-header">
         <div class="round-title">${isLatest ? "最新ラウンド" : "ラウンド " + round.roundNumber}</div>
-        <div class="round-meta">${isLatest ? "Round " + round.roundNumber + " · " + time : time}</div>
+        <div class="round-meta">
+          ${isLatest ? "Round " + round.roundNumber + " · " + time : time}
+          ${isLatest ? `<button class="shuffle-btn" id="shuffleBtn" aria-label="組み合わせをシャッフル">🔄 シャッフル</button>` : ""}
+        </div>
       </div>
   `;
   round.matches.forEach(m => {
@@ -1692,6 +1804,7 @@ document.getElementById("playerList").addEventListener("click", e => {
   if (btn.dataset.action === "toggle") toggleActive(id);
   if (btn.dataset.action === "skill") toggleSkill(id);
   if (btn.dataset.action === "norest") toggleNeverRest(id);
+  if (btn.dataset.action === "prefer3") togglePrefer3v3(id);
   if (btn.dataset.action === "ng") openNgSheet(id);
   if (btn.dataset.action === "del") {
     const p = state.players.find(x => x.id === id);
@@ -1747,6 +1860,11 @@ document.getElementById("undoBtn").addEventListener("click", () => {
   if (state.rounds.length === 0) return;
   if (confirm("直前のラウンドを取り消しますか?(試合カウントも戻ります)")) {
     undoLastRound();
+  }
+});
+document.getElementById("latestRound").addEventListener("click", e => {
+  if (e.target.closest("#shuffleBtn")) {
+    shuffleLatestRound();
   }
 });
 
