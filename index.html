@@ -1285,6 +1285,13 @@ function buildPairHistory() {
 }
 const NG_WEIGHT = 1e6;
 const PREFER_3V3_WEIGHT = 1000;
+// シャッフル時、直前ラウンドと同じ相方/対戦を作り直しにくくするための加点(ソフト)。
+// NG より十分小さく、組み合わせが他に無い場合は許容される。
+const REPEAT_TEAMMATE_W = 2000;
+const REPEAT_OPPONENT_W = 200;
+function inPairSet(set, a, b) {
+  return set ? set.has(a < b ? a + "|" + b : b + "|" + a) : false;
+}
 function isNGPair(hist, a, b) {
   const sa = hist.ng && hist.ng.get(a);
   return sa ? sa.has(b) : false;
@@ -1323,14 +1330,17 @@ function bestSplit(players, hist) {
         score += sq(get(hist.teammate, teamA[i].id, teamA[j].id)) * 3;
         score += cooldownPenalty(hist, teamA[i].id, teamA[j].id);
         if (isNGPair(hist, teamA[i].id, teamA[j].id)) score += NG_WEIGHT;
+        if (inPairSet(hist.justTeammate, teamA[i].id, teamA[j].id)) score += REPEAT_TEAMMATE_W;
         score += sq(get(hist.teammate, teamB[i].id, teamB[j].id)) * 3;
         score += cooldownPenalty(hist, teamB[i].id, teamB[j].id);
         if (isNGPair(hist, teamB[i].id, teamB[j].id)) score += NG_WEIGHT;
+        if (inPairSet(hist.justTeammate, teamB[i].id, teamB[j].id)) score += REPEAT_TEAMMATE_W;
       }
     for (let i = 0; i < teamSize; i++)
       for (let j = 0; j < teamSize; j++) {
         score += sq(get(hist.opponent, teamA[i].id, teamB[j].id)) * 2;
         score += cooldownPenalty(hist, teamA[i].id, teamB[j].id);
+        if (inPairSet(hist.justOpponent, teamA[i].id, teamB[j].id)) score += REPEAT_OPPONENT_W;
       }
     score += Math.random() * 0.01;
     if (score < bestScore) { bestScore = score; best = { teamA, teamB, score }; }
@@ -1518,6 +1528,19 @@ function shuffleLatestRound() {
   const saved = state.rounds.shift();
   const hist = buildPairHistory();
   state.rounds.unshift(saved);
+
+  // 直前(現在)ラウンドの相方/対戦ペアを記録し、シャッフルで作り直しにくくする
+  const pairKey = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
+  hist.justTeammate = new Set();
+  hist.justOpponent = new Set();
+  last.matches.forEach(m => {
+    [m.teamA, m.teamB].forEach(team => {
+      for (let i = 0; i < team.length; i++)
+        for (let j = i + 1; j < team.length; j++)
+          hist.justTeammate.add(pairKey(team[i].id, team[j].id));
+    });
+    m.teamA.forEach(a => m.teamB.forEach(b => hist.justOpponent.add(pairKey(a.id, b.id))));
+  });
 
   // 現在のラウンドぶんを除いた gamesByFormat を作る
   const gbf = new Map(state.players.map(p => [p.id, { ...(p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }) }]));
