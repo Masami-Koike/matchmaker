@@ -65,6 +65,9 @@
     letter-spacing: -0.02em;
   }
   .logo .accent { color: var(--accent); }
+  .header-actions {
+    display: flex; align-items: center; gap: 8px;
+  }
   .menu-btn {
     width: 40px; height: 40px;
     border-radius: 12px;
@@ -73,6 +76,7 @@
     color: var(--text-dim);
     font-size: 20px;
   }
+  .menu-btn:active { background: var(--accent-soft); color: var(--accent); }
 
   /* ===== Tabs ===== */
   .tabs {
@@ -630,7 +634,10 @@
 <div class="app">
   <header class="header">
     <div class="logo">Match<span class="accent">Maker</span></div>
-    <button class="menu-btn" id="menuBtn" aria-label="メニュー">⋯</button>
+    <div class="header-actions">
+      <button class="menu-btn" id="refreshBtn" aria-label="アプリを再読み込み" title="再読み込み">⟳</button>
+      <button class="menu-btn" id="menuBtn" aria-label="メニュー">⋯</button>
+    </div>
   </header>
 
   <nav class="tabs">
@@ -809,8 +816,9 @@
     <div class="rule-block">
       <h3>7. 休みなし(常に出場)設定</h3>
       <ul>
-        <li>特定のプレイヤーを「<strong>休みなし</strong>」に設定すると、出場プールに最優先で入る(基本的に休憩に回らない)。</li>
+        <li>特定のプレイヤーを「<strong>休みなし</strong>」に設定すると、出場プールに<strong>強く優先</strong>して入る(基本的に休憩に回らない)。</li>
         <li>登録方法: プレイヤー一覧上部の「編集」をタップ → 各行の <code>全出</code> ボタンで切替。設定中は名前の右に「全出」マークが付く。</li>
+        <li>ただし「絶対」ではなく強めの優先。休みなしの人が試合数で大きく<strong>突出したら休憩に回り</strong>、休みなしでない人にも枠が回る(誰かが延々と休みになるのを防ぐため)。</li>
         <li>休みなしの人数がコート定員より多い場合は、休みなしの中で <strong>試合数が少ない順</strong>に出場し、はみ出る人は休憩。</li>
         <li>休みなし設定でも、自分でチェックを外して「休み」にすれば出場対象から除外される。</li>
       </ul>
@@ -1403,11 +1411,10 @@ function buildSkillCourtSpecs(skill) {
   return specs;
 }
 
-function generateNextRound() {
-  if (!canGenerate()) return;
-  const hist = buildPairHistory();
-  const gbf = new Map(state.players.map(p => [p.id, p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }]));
-
+// 出場者の選出とコート割り当て。generateNextRound と shuffle で共用。
+// 現在生成しようとしているラウンドは state.rounds に含まれていない前提で呼ぶこと
+// (履歴由来の集計 upperGames が現ラウンドを二重に数えないようにするため)。
+function pickPlayingAndAssign(upperNeed, lowerNeed, upperSpecs, lowerSpecs, hist, gbf) {
   // 休み(チェック外し)は内部スコアに含めて、復帰時に優先選出されないようにする
   const priority = p => p.gamesPlayed + (p.skipCount || 0);
 
@@ -1424,28 +1431,30 @@ function generateNextRound() {
     });
   });
 
-  // 休みなし(neverRest=true)は常に出場プールへ。タイブレークは事前のランダムキーで決定的にソート。
+  // 休みなし(neverRest)は「絶対優先」ではなく「強い加点」として扱う。
+  // 全出でも試合数が NEVER_REST_BONUS 以上に突出したら、全出でない人に枠を譲る。
+  // これで全出の人数がコート定員以上でも、全出でない人が延々と休みになるのを防ぐ。
+  const NEVER_REST_BONUS = 4;
+  // 全出は実効優先度を下げて先に選出されやすくする(小さいほど先に出場)。
+  const effPriority = p => priority(p) - (p.neverRest ? NEVER_REST_BONUS : 0);
+
+  // タイブレークは事前のランダムキーで決定的にソート。
   const sortByGames = arr => {
     const keyed = arr.map(p => ({ p, r: Math.random() }));
     keyed.sort((a, b) => {
-      const na = a.p.neverRest ? 1 : 0;
-      const nb = b.p.neverRest ? 1 : 0;
-      if (na !== nb) return nb - na; // neverRest を先頭に
-      const pa = priority(a.p), pb = priority(b.p);
+      const pa = effPriority(a.p), pb = effPriority(b.p);
       if (pa !== pb) return pa - pb;
       return a.r - b.r;
     });
     return keyed.map(x => x.p);
   };
-  // 上級コート専用ソート: 上級コート出場が少ない人を最優先(同数は総試合数 → ランダム)
+  // 上級コート専用ソート: 上級コート出場が少ない人を最優先(同数は総試合数 → ランダム)。
+  // 全出は上級出場回数にも同じボーナスを掛け、上級枠に入りやすくしつつ突出したら譲る。
+  const upperKey = p => (upperGames.get(p.id) || 0) - (p.neverRest ? NEVER_REST_BONUS : 0);
   const sortForUpper = arr => {
     const keyed = arr.map(p => ({ p, r: Math.random() }));
     keyed.sort((a, b) => {
-      const na = a.p.neverRest ? 1 : 0;
-      const nb = b.p.neverRest ? 1 : 0;
-      if (na !== nb) return nb - na;
-      const ua = upperGames.get(a.p.id) || 0;
-      const ub = upperGames.get(b.p.id) || 0;
+      const ua = upperKey(a.p), ub = upperKey(b.p);
       if (ua !== ub) return ua - ub;
       const pa = priority(a.p), pb = priority(b.p);
       if (pa !== pb) return pa - pb;
@@ -1456,8 +1465,6 @@ function generateNextRound() {
 
   const upperActive = activeBySkill(SKILL_UPPER);
   const lowerActive = activeBySkill(SKILL_LOWER);
-  const upperNeed   = neededForSkill(SKILL_UPPER);
-  const lowerNeed   = neededForSkill(SKILL_LOWER);
 
   // 上級コートは上級プレイヤーだけで埋める。上級コート出場回数が少ない順に優先。
   const upperSorted   = sortForUpper(upperActive);
@@ -1468,9 +1475,6 @@ function generateNextRound() {
   const lowerPool     = sortByGames([...lowerActive, ...upperOverflow]);
   const lowerPlaying  = lowerPool.slice(0, lowerNeed);
   const lowerResting  = lowerPool.slice(lowerNeed);
-
-  const upperSpecs = buildSkillCourtSpecs(SKILL_UPPER);
-  const lowerSpecs = buildSkillCourtSpecs(SKILL_LOWER);
 
   const upperMatches = upperSpecs.length > 0
     ? assignToCourts(upperPlaying.map(p => ({ id: p.id, name: p.name })), upperSpecs, hist, gbf)
@@ -1484,8 +1488,22 @@ function generateNextRound() {
   lowerMatches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_LOWER }));
   upperMatches.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_UPPER }));
 
-  const allPlaying = [...upperPlaying, ...lowerPlaying];
-  const allResting = lowerResting; // 上級にあぶれてランダムにも入らなかった分はここに含まれている
+  return {
+    allMatches,
+    allPlaying: [...upperPlaying, ...lowerPlaying],
+    allResting: lowerResting, // 上級にあぶれてランダムにも入らなかった分を含む
+  };
+}
+
+function generateNextRound() {
+  if (!canGenerate()) return;
+  const hist = buildPairHistory();
+  const gbf = new Map(state.players.map(p => [p.id, p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }]));
+
+  const upperSpecs = buildSkillCourtSpecs(SKILL_UPPER);
+  const lowerSpecs = buildSkillCourtSpecs(SKILL_LOWER);
+  const { allMatches, allPlaying, allResting } = pickPlayingAndAssign(
+    neededForSkill(SKILL_UPPER), neededForSkill(SKILL_LOWER), upperSpecs, lowerSpecs, hist, gbf);
 
   allPlaying.forEach(p => {
     const found = state.players.find(x => x.id === p.id);
@@ -1524,12 +1542,38 @@ function shuffleLatestRound() {
   const last = state.rounds[0];
   if (!last.matches || last.matches.length === 0) return;
 
-  // 現在のラウンドを履歴から一旦外して hist を構築(自分自身は履歴に含めない)
-  const saved = state.rounds.shift();
-  const hist = buildPairHistory();
-  state.rounds.unshift(saved);
+  // このラウンドのコート形式は維持する
+  const fmtSize = f => f === "1v1" ? 2 : f === "2v2" ? 4 : 6;
+  const upperSpecs = last.matches.filter(m => m.skill === SKILL_UPPER).map(m => ({ format: m.format, skill: SKILL_UPPER }));
+  const lowerSpecs = last.matches.filter(m => m.skill === SKILL_LOWER).map(m => ({ format: m.format, skill: SKILL_LOWER }));
+  const upperNeed = upperSpecs.reduce((s, sp) => s + fmtSize(sp.format), 0);
+  const lowerNeed = lowerSpecs.reduce((s, sp) => s + fmtSize(sp.format), 0);
 
-  // 直前(現在)ラウンドの相方/対戦ペアを記録し、シャッフルで作り直しにくくする
+  // 出場者・休憩者も含めて選び直すので、出場可能人数が足りなければ中断
+  const upperActiveN = activeBySkill(SKILL_UPPER).length;
+  const lowerActiveN = activeBySkill(SKILL_LOWER).length;
+  if (upperActiveN < upperNeed || (lowerActiveN + (upperActiveN - upperNeed)) < lowerNeed) {
+    showToast("出場人数が足りないためシャッフルできません");
+    return;
+  }
+
+  // 現在のラウンドを「まだ無かったこと」にして選び直す。
+  // 1) このラウンドで増えた出場数・休みカウントを巻き戻す
+  last.matches.forEach(m => {
+    [...m.teamA, ...m.teamB].forEach(ref => {
+      const p = state.players.find(x => x.id === ref.id);
+      if (p && p.gamesPlayed > 0) p.gamesPlayed -= 1;
+    });
+  });
+  (last.inactiveCounted || []).forEach(id => {
+    const p = state.players.find(x => x.id === id);
+    if (p && (p.skipCount || 0) > 0) p.skipCount -= 1;
+  });
+  // 2) 履歴系(ペア/上級出場/形式)から現ラウンドを外すため一旦取り除く
+  state.rounds.shift();
+
+  const hist = buildPairHistory();
+  // 直前(いま外した)ラウンドの相方/対戦ペアは作り直しにくくする
   const pairKey = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
   hist.justTeammate = new Set();
   hist.justOpponent = new Set();
@@ -1542,7 +1586,7 @@ function shuffleLatestRound() {
     m.teamA.forEach(a => m.teamB.forEach(b => hist.justOpponent.add(pairKey(a.id, b.id))));
   });
 
-  // 現在のラウンドぶんを除いた gamesByFormat を作る
+  // 現ラウンドぶんを除いた gamesByFormat(形式バランス用)
   const gbf = new Map(state.players.map(p => [p.id, { ...(p.gamesByFormat || { "1v1": 0, "2v2": 0, "3v3": 0 }) }]));
   last.matches.forEach(m => {
     [...m.teamA, ...m.teamB].forEach(ref => {
@@ -1551,25 +1595,31 @@ function shuffleLatestRound() {
     });
   });
 
-  const upperMatches = last.matches.filter(m => m.skill === SKILL_UPPER);
-  const lowerMatches = last.matches.filter(m => m.skill === SKILL_LOWER);
-  const upperPlaying = upperMatches.flatMap(m => [...m.teamA, ...m.teamB]);
-  const lowerPlaying = lowerMatches.flatMap(m => [...m.teamA, ...m.teamB]);
-  const upperSpecs = upperMatches.map(m => ({ format: m.format }));
-  const lowerSpecs = lowerMatches.map(m => ({ format: m.format }));
+  // 出場者・休憩者・チームを全部選び直す
+  const { allMatches, allPlaying, allResting } =
+    pickPlayingAndAssign(upperNeed, lowerNeed, upperSpecs, lowerSpecs, hist, gbf);
 
-  const newUpper = upperSpecs.length > 0
-    ? assignToCourts(upperPlaying.map(p => ({ id: p.id, name: p.name })), upperSpecs, hist, gbf)
-    : [];
-  const newLower = lowerSpecs.length > 0
-    ? assignToCourts(lowerPlaying.map(p => ({ id: p.id, name: p.name })), lowerSpecs, hist, gbf)
-    : [];
+  // 効果を再適用(出場者 +1、休み(チェック外し)+1)
+  allPlaying.forEach(p => {
+    const found = state.players.find(x => x.id === p.id);
+    if (found) found.gamesPlayed += 1;
+  });
+  const inactiveCounted = [];
+  state.players.forEach(p => {
+    if (!p.isActive) {
+      p.skipCount = (p.skipCount || 0) + 1;
+      inactiveCounted.push(p.id);
+    }
+  });
 
-  const allMatches = [];
-  let courtNo = 1;
-  newLower.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_LOWER }));
-  newUpper.forEach(m => allMatches.push({ ...m, courtNumber: courtNo++, skill: SKILL_UPPER }));
-  last.matches = allMatches;
+  // ラウンド番号・時刻は維持して中身だけ差し替え
+  state.rounds.unshift({
+    roundNumber: last.roundNumber,
+    matches: allMatches,
+    resting: allResting.map(p => ({ id: p.id, name: p.name })),
+    inactiveCounted,
+    timestamp: last.timestamp,
+  });
 
   // 形式が変わる可能性があるので gamesByFormat を全件再計算
   state.players.forEach(p => { p.gamesByFormat = { "1v1": 0, "2v2": 0, "3v3": 0 }; });
@@ -1716,7 +1766,7 @@ function renderRoundHTML(round, isLatest) {
         <div class="round-title">${isLatest ? "最新ラウンド" : "ラウンド " + round.roundNumber}</div>
         <div class="round-meta">
           ${isLatest ? "Round " + round.roundNumber + " · " + time : time}
-          ${isLatest ? `<button class="shuffle-btn" id="shuffleBtn" aria-label="組み合わせをシャッフル">🔄 シャッフル</button>` : ""}
+          ${isLatest ? `<button class="shuffle-btn" id="shuffleBtn" aria-label="出場者とチームをシャッフル">🔄 シャッフル</button>` : ""}
         </div>
       </div>
   `;
@@ -1934,6 +1984,7 @@ document.getElementById("ngSheet").addEventListener("click", e => {
   if (e.target.id === "ngSheet") closeNgSheet();
 });
 
+document.getElementById("refreshBtn").addEventListener("click", () => location.reload());
 const sheet = document.getElementById("menuSheet");
 document.getElementById("menuBtn").addEventListener("click", () => sheet.classList.add("show"));
 document.getElementById("closeSheetBtn").addEventListener("click", () => sheet.classList.remove("show"));
