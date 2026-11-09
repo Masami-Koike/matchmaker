@@ -891,6 +891,11 @@
 // MatchMaker — 2v2 / 3v3 mixed
 // ============================================================
 
+// ----- アプリのバージョン -----
+// index.html を更新したら、必ずこの文字列も変更すること。
+// 起動中のアプリはこの値とサーバー上の値を比べて、違っていれば自動で読み直す。
+const APP_VERSION = "2026-11-09.1";
+
 const STORAGE_KEY = "matchmaker_v2";
 const LEGACY_KEY  = "matchmaker3v3_v1";
 const COURT_MAX   = 20;
@@ -1257,10 +1262,26 @@ function buildPairHistory() {
   const teammate = new Map();
   const opponent = new Map();
   const sameCourtLast = new Map();   // pair → round index of last same-court appearance (0 = most recent)
+  const teammateLast  = new Map();   // pair → round index of last time they were TEAMMATES (0 = most recent)
+  const sameCourt     = new Map();   // pair → 同じコートになった回数(味方・敵を問わない)
+  const meetExpected  = new Map();   // pair → 2 人とも出場したラウンドで、ランダムなら同コートになる回数の期待値
   const key = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
   const add = (m, a, b) => { const k = key(a, b); m.set(k, (m.get(k) || 0) + 1); };
   // state.rounds is newest-first, so idx 0 = the most recent finished round.
   state.rounds.forEach((r, idx) => {
+    // このラウンドの出場者全員について「ランダムに分けたら同コートになる確率」を期待値に足す。
+    // 後から来た人・休みが多い人は 2 人とも出たラウンドが少ないので期待値も小さくなる。
+    const onCourt = r.matches.map(m => [...m.teamA, ...m.teamB]);
+    const nPlaying = onCourt.reduce((s, g) => s + g.length, 0);
+    if (nPlaying >= 2) {
+      const pSame = onCourt.reduce((s, g) => s + g.length * (g.length - 1), 0) / (nPlaying * (nPlaying - 1));
+      const ids = onCourt.flat().map(x => x.id);
+      for (let i = 0; i < ids.length; i++)
+        for (let j = i + 1; j < ids.length; j++) {
+          const k = key(ids[i], ids[j]);
+          meetExpected.set(k, (meetExpected.get(k) || 0) + pSame);
+        }
+    }
     r.matches.forEach(m => {
       for (let i = 0; i < m.teamA.length; i++)
         for (let j = i + 1; j < m.teamA.length; j++)
@@ -1269,12 +1290,22 @@ function buildPairHistory() {
         for (let j = i + 1; j < m.teamB.length; j++)
           add(teammate, m.teamB[i].id, m.teamB[j].id);
       m.teamA.forEach(a => m.teamB.forEach(b => add(opponent, a.id, b.id)));
+      // Track most recent TEAMMATE appearance for the teammate cooldown penalty.
+      [m.teamA, m.teamB].forEach(t => {
+        for (let i = 0; i < t.length; i++) {
+          for (let j = i + 1; j < t.length; j++) {
+            const k = key(t[i].id, t[j].id);
+            if (!teammateLast.has(k)) teammateLast.set(k, idx);
+          }
+        }
+      });
       // Track most recent same-court appearance for the cooldown penalty.
       const allOnCourt = [...m.teamA, ...m.teamB];
       for (let i = 0; i < allOnCourt.length; i++) {
         for (let j = i + 1; j < allOnCourt.length; j++) {
           const k = key(allOnCourt[i].id, allOnCourt[j].id);
           if (!sameCourtLast.has(k)) sameCourtLast.set(k, idx);
+          sameCourt.set(k, (sameCourt.get(k) || 0) + 1);
         }
       }
     });
@@ -1289,7 +1320,7 @@ function buildPairHistory() {
   // 3v3 優先プレイヤーの ID セットを添付
   const prefer3v3 = new Set();
   state.players.forEach(p => { if (p.prefer3v3) prefer3v3.add(p.id); });
-  return { teammate, opponent, sameCourtLast, ng, prefer3v3 };
+  return { teammate, opponent, sameCourtLast, teammateLast, sameCourt, meetExpected, ng, prefer3v3 };
 }
 const NG_WEIGHT = 1e6;
 const PREFER_3V3_WEIGHT = 1000;
@@ -1309,7 +1340,7 @@ function isNGPair(hist, a, b) {
 // Cooldown penalty: pairs that were on the same court within the last
 // COOLDOWN rounds get an extra heavy penalty. Encourages spacing out repeats.
 const COOLDOWN = 3;
-const COOLDOWN_W = 30;
+const COOLDOWN_W = 60;
 function cooldownPenalty(hist, aId, bId) {
   const m = hist.sameCourtLast;
   if (!m) return 0;
@@ -1317,6 +1348,38 @@ function cooldownPenalty(hist, aId, bId) {
   const lastIdx = m.get(k);
   if (lastIdx === undefined || lastIdx >= COOLDOWN) return 0;
   return (COOLDOWN - lastIdx) * COOLDOWN_W;
+}
+
+// Teammate cooldown: 直近 TEAM_COOLDOWN ラウンド以内に「味方」だったペアを
+// 再び味方にすると重いペナルティ。
+// cooldownPenalty(同コート) は 4 人コートの 6 ペア全部に等しく乗るため、
+// チーム分けの選択には影響しない(定数として打ち消し合う)。味方の連続を防ぐには
+// 味方ペアだけに乗るこのペナルティが必要。
+const TEAM_COOLDOWN = 3;
+const TEAM_COOLDOWN_W = 150;
+function teammateCooldownPenalty(hist, aId, bId) {
+  const m = hist.teammateLast;
+  if (!m) return 0;
+  const k = (aId < bId ? aId + "|" + bId : bId + "|" + aId);
+  const lastIdx = m.get(k);
+  if (lastIdx === undefined || lastIdx >= TEAM_COOLDOWN) return 0;
+  return (TEAM_COOLDOWN - lastIdx) * TEAM_COOLDOWN_W;
+}
+
+// Meet balance: 同コート回数が期待値より多いペアは同じコートに入れにくく、
+// 少ないペア(まだあまり当たっていない人同士)は入れやすくする。
+// 味方・敵の区別は bestSplit 側の仕事なので、ここはコート分け(誰と同じコートか)だけに効く。
+const MEET_W = 30;
+function meetBalancePenalty(hist, group) {
+  if (!hist.sameCourt || !hist.meetExpected) return 0;
+  let s = 0;
+  for (let i = 0; i < group.length; i++)
+    for (let j = i + 1; j < group.length; j++) {
+      const a = group[i].id, b = group[j].id;
+      const k = (a < b ? a + "|" + b : b + "|" + a);
+      s += (hist.sameCourt.get(k) || 0) - (hist.meetExpected.get(k) || 0);
+    }
+  return s * MEET_W;
 }
 
 function bestSplit(players, hist) {
@@ -1337,10 +1400,12 @@ function bestSplit(players, hist) {
       for (let j = i + 1; j < teamSize; j++) {
         score += sq(get(hist.teammate, teamA[i].id, teamA[j].id)) * 3;
         score += cooldownPenalty(hist, teamA[i].id, teamA[j].id);
+        score += teammateCooldownPenalty(hist, teamA[i].id, teamA[j].id);
         if (isNGPair(hist, teamA[i].id, teamA[j].id)) score += NG_WEIGHT;
         if (inPairSet(hist.justTeammate, teamA[i].id, teamA[j].id)) score += REPEAT_TEAMMATE_W;
         score += sq(get(hist.teammate, teamB[i].id, teamB[j].id)) * 3;
         score += cooldownPenalty(hist, teamB[i].id, teamB[j].id);
+        score += teammateCooldownPenalty(hist, teamB[i].id, teamB[j].id);
         if (isNGPair(hist, teamB[i].id, teamB[j].id)) score += NG_WEIGHT;
         if (inPairSet(hist.justTeammate, teamB[i].id, teamB[j].id)) score += REPEAT_TEAMMATE_W;
       }
@@ -1388,6 +1453,7 @@ function assignToCourts(playing, courtSpecs, hist, gbf) {
           total += PREFER_3V3_WEIGHT;
         }
       });
+      total += meetBalancePenalty(hist, group);
       const split = bestSplit(group, hist);
       total += split.score;
       matches.push({
@@ -1984,7 +2050,79 @@ document.getElementById("ngSheet").addEventListener("click", e => {
   if (e.target.id === "ngSheet") closeNgSheet();
 });
 
-document.getElementById("refreshBtn").addEventListener("click", () => location.reload());
+// ============================================================
+// 自動アップデート
+// index.html 自身を定期的に取りに行き、APP_VERSION が変わっていたら
+// 自分で読み直す。利用者が ⟳ を押さなくても最新版になる。
+// ============================================================
+const UPDATE_CHECK_MS = 60 * 1000;   // 1 分ごと
+const UPDATE_MIN_GAP_MS = 20 * 1000; // 画面復帰が連続しても、この間隔より短くは確認しない
+let updateChecking = false;
+let lastUpdateCheck = 0;
+
+// 入力中・シート表示中は読み直しを見送る(次の機会に回す)
+function isBusyForReload() {
+  const el = document.activeElement;
+  if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return true;
+  return document.querySelector(".sheet-bg.show") !== null;
+}
+
+async function fetchRemoteVersion() {
+  // クエリを付けて HTTP キャッシュを確実に迂回する
+  const url = location.pathname + "?_c=" + Date.now().toString(36);
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const text = await res.text();
+  const m = text.match(/const\s+APP_VERSION\s*=\s*"([^"]+)"/);
+  return m ? m[1] : null;
+}
+
+async function checkForUpdate(auto) {
+  if (updateChecking) return false;
+  if (location.protocol === "file:") return false;   // ローカルで開いた場合は何もしない
+  const now = Date.now();
+  if (auto && now - lastUpdateCheck < UPDATE_MIN_GAP_MS) return false;
+  lastUpdateCheck = now;
+  updateChecking = true;
+  try {
+    const remote = await fetchRemoteVersion();
+    if (!remote || remote === APP_VERSION) return false;
+    if (auto && isBusyForReload()) return false;     // 入力中は見送り
+    try { sessionStorage.setItem("mm_updated_to", remote); } catch (e) {}
+    // キャッシュされた古い HTML を掴まないよう、URL を変えて読み直す
+    location.replace(location.pathname + "?v=" + encodeURIComponent(remote));
+    return true;
+  } catch (e) {
+    return false;                                    // オフライン等は黙って無視
+  } finally {
+    updateChecking = false;
+  }
+}
+
+function startAutoUpdate() {
+  if (location.protocol === "file:") return;
+  // 直前に自動更新した場合は知らせる
+  try {
+    const to = sessionStorage.getItem("mm_updated_to");
+    if (to) {
+      sessionStorage.removeItem("mm_updated_to");
+      setTimeout(() => showToast("最新版に更新しました (" + to + ")"), 400);
+    }
+  } catch (e) {}
+  checkForUpdate(true);                                        // 起動直後に 1 回
+  setInterval(() => checkForUpdate(true), UPDATE_CHECK_MS);    // 以降は定期的に
+  document.addEventListener("visibilitychange", () => {        // 画面に戻ったとき
+    if (!document.hidden) checkForUpdate(true);
+  });
+  window.addEventListener("focus", () => checkForUpdate(true));
+  window.addEventListener("online", () => checkForUpdate(true));
+}
+
+// ⟳ ボタン: 手動でも「更新があれば取りに行く」動作にする
+document.getElementById("refreshBtn").addEventListener("click", async () => {
+  const updating = await checkForUpdate(false);
+  if (!updating) location.reload();
+});
 const sheet = document.getElementById("menuSheet");
 document.getElementById("menuBtn").addEventListener("click", () => sheet.classList.add("show"));
 document.getElementById("closeSheetBtn").addEventListener("click", () => sheet.classList.remove("show"));
@@ -2013,6 +2151,7 @@ document.getElementById("resetAllBtn").addEventListener("click", () => {
 // ----- Init -----
 load();
 renderAll();
+startAutoUpdate();
 </script>
 <!-- Cloudflare Web Analytics -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "966bbc93fb634e0d9184904953f3b693"}'></script>
