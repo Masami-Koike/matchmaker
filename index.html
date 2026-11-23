@@ -894,7 +894,7 @@
 // ----- アプリのバージョン -----
 // index.html を更新したら、必ずこの文字列も変更すること。
 // 起動中のアプリはこの値とサーバー上の値を比べて、違っていれば自動で読み直す。
-const APP_VERSION = "2026-11-09.1";
+const APP_VERSION = "2026-11-23.1";
 
 const STORAGE_KEY = "matchmaker_v2";
 const LEGACY_KEY  = "matchmaker3v3_v1";
@@ -1262,6 +1262,7 @@ function buildPairHistory() {
   const teammate = new Map();
   const opponent = new Map();
   const sameCourtLast = new Map();   // pair → round index of last same-court appearance (0 = most recent)
+  const sameCourtRecent = new Map(); // pair → Σ(COOLDOWN - idx) over same-court rounds within the last COOLDOWN rounds
   const teammateLast  = new Map();   // pair → round index of last time they were TEAMMATES (0 = most recent)
   const sameCourt     = new Map();   // pair → 同じコートになった回数(味方・敵を問わない)
   const meetExpected  = new Map();   // pair → 2 人とも出場したラウンドで、ランダムなら同コートになる回数の期待値
@@ -1305,6 +1306,9 @@ function buildPairHistory() {
         for (let j = i + 1; j < allOnCourt.length; j++) {
           const k = key(allOnCourt[i].id, allOnCourt[j].id);
           if (!sameCourtLast.has(k)) sameCourtLast.set(k, idx);
+          // 直近 COOLDOWN ラウンドの同コートを「全部」積算する(最後の 1 回だけだと、
+          // 毎ラウンド同じペアが続いても毎回同じ重さにしかならず連続を断ち切れない)。
+          if (idx < COOLDOWN) sameCourtRecent.set(k, (sameCourtRecent.get(k) || 0) + (COOLDOWN - idx));
           sameCourt.set(k, (sameCourt.get(k) || 0) + 1);
         }
       }
@@ -1320,7 +1324,7 @@ function buildPairHistory() {
   // 3v3 優先プレイヤーの ID セットを添付
   const prefer3v3 = new Set();
   state.players.forEach(p => { if (p.prefer3v3) prefer3v3.add(p.id); });
-  return { teammate, opponent, sameCourtLast, teammateLast, sameCourt, meetExpected, ng, prefer3v3 };
+  return { teammate, opponent, sameCourtLast, sameCourtRecent, teammateLast, sameCourt, meetExpected, ng, prefer3v3 };
 }
 const NG_WEIGHT = 1e6;
 const PREFER_3V3_WEIGHT = 1000;
@@ -1342,12 +1346,10 @@ function isNGPair(hist, a, b) {
 const COOLDOWN = 3;
 const COOLDOWN_W = 60;
 function cooldownPenalty(hist, aId, bId) {
-  const m = hist.sameCourtLast;
+  const m = hist.sameCourtRecent;
   if (!m) return 0;
   const k = (aId < bId ? aId + "|" + bId : bId + "|" + aId);
-  const lastIdx = m.get(k);
-  if (lastIdx === undefined || lastIdx >= COOLDOWN) return 0;
-  return (COOLDOWN - lastIdx) * COOLDOWN_W;
+  return (m.get(k) || 0) * COOLDOWN_W;
 }
 
 // Teammate cooldown: 直近 TEAM_COOLDOWN ラウンド以内に「味方」だったペアを
